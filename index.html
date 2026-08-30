@@ -1,20 +1,86 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8">
-    <title>我的第一个网页</title>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>夏日森林 · 摄影画廊</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
 
-    <link rel="stylesheet" href="style.css">
+    <!-- 导航栏 -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-icon">🌲</span>
+                <span class="logo-text">夏日森林</span>
+            </div>
+            <nav class="nav-links">
+                <a href="#hero" class="nav-link active">首页</a>
+                <a href="#gallery" class="nav-link">画廊</a>
+                <a href="#footer" class="nav-link">关于</a>
+            </nav>
+            <button class="nav-toggle" id="navToggle" aria-label="菜单">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
 
-  </head>
-  <body>
-    <div class="card">
-      <h1>你好，github</h1>
-      <p id="msg">这是我的第一个网页，现在它有了一点样式。</p>
-      <button onclick="changeText()">点我试试</button>
+    <!-- 英雄区 -->
+    <section class="hero" id="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1 class="hero-title">探索夏日森林之美</h1>
+            <p class="hero-subtitle">用镜头捕捉每一缕阳光与绿意</p>
+            <button class="btn-primary hero-btn" id="exploreBtn">开始探索 ↓</button>
+        </div>
+        <div class="hero-scroll-indicator">
+            <span></span>
+        </div>
+    </section>
+
+    <!-- 画廊工具栏 -->
+    <section class="gallery-toolbar" id="gallery">
+        <div class="toolbar-container">
+            <h2 class="gallery-title">🌿 光影集</h2>
+            <div class="toolbar-actions">
+                <button class="btn-outline" id="shuffleBtn">🎲 随机探索</button>
+                <button class="btn-outline" id="viewToggle">⊞ 切换视图</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 画廊网格 -->
+    <section class="gallery-grid" id="galleryGrid">
+        <!-- 卡片由 JavaScript 动态渲染 -->
+    </section>
+
+    <!-- 底部 -->
+    <footer class="footer" id="footer">
+        <div class="footer-container">
+            <p class="footer-text">© 2026 夏日森林 · 用镜头记录自然</p>
+            <p class="footer-sub">🌳 每一片叶子都在诉说夏天的故事</p>
+        </div>
+    </footer>
+
+    <!-- 模态框 -->
+    <div class="modal" id="modal">
+        <div class="modal-overlay" id="modalOverlay"></div>
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose" aria-label="关闭">✕</button>
+            <div class="modal-body">
+                <div class="modal-image-wrap">
+                    <img class="modal-image" id="modalImage" src="" alt="森林照片" />
+                </div>
+                <div class="modal-info">
+                    <h2 class="modal-title" id="modalTitle">标题</h2>
+                    <p class="modal-desc" id="modalDesc">描述文字</p>
+                    <span class="modal-date" id="modalDate">📅 2026-08-30</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
-
-  </body>
+</body>
 </html>

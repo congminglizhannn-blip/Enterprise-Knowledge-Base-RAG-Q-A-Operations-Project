@@ -1,131 +1,31 @@
 (function() {
     'use strict';
 
-    // ===== 扩展照片库（20+ 条，图文配套） =====
-    const photoLibrary = [
-        {
-            seed: 'forest1',
-            title: '晨光林间',
-            description: '阳光穿透树冠，洒在苔藓覆盖的小径上，仿佛走入童话世界。',
-            date: '2026-07-12'
-        },
-        {
-            seed: 'forest2',
-            title: '溪畔翠影',
-            description: '清澈的溪流倒映着两岸的绿意，水声与鸟鸣交织成夏日的交响。',
-            date: '2026-07-18'
-        },
-        {
-            seed: 'forest3',
-            title: '古树之冠',
-            description: '一棵百年橡树撑开巨大的华盖，为生灵提供荫庇与栖息。',
-            date: '2026-07-25'
-        },
-        {
-            seed: 'forest4',
-            title: '雾漫杉林',
-            description: '薄雾萦绕在杉木之间，湿度与光线共同绘出静谧的画卷。',
-            date: '2026-08-02'
-        },
-        {
-            seed: 'forest5',
-            title: '野花小径',
-            description: '路边盛开的野花与蕨类植物，为森林增添了一抹斑斓色彩。',
-            date: '2026-08-09'
-        },
-        {
-            seed: 'forest6',
-            title: '光斑舞者',
-            description: '光影在密林深处跳跃，每一个光斑都像是森林的呼吸。',
-            date: '2026-08-16'
-        },
-        {
-            seed: 'forest7',
-            title: '静谧湖畔',
-            description: '森林深处的湖泊如镜面般倒映着云杉，时间仿佛在此凝固。',
-            date: '2026-08-22'
-        },
-        {
-            seed: 'forest8',
-            title: '金色黄昏',
-            description: '斜阳将森林染成琥珀色，一天的喧嚣在此刻归于宁静。',
-            date: '2026-08-29'
-        },
-        {
-            seed: 'forest9',
-            title: '雨后新绿',
-            description: '雨后的森林格外清新，叶片上挂着晶莹的水珠，折射出七彩光芒。',
-            date: '2026-07-05'
-        },
-        {
-            seed: 'forest10',
-            title: '蕨类秘境',
-            description: '高大的蕨类植物簇拥成一片绿色海洋，仿佛回到远古时代。',
-            date: '2026-07-08'
-        },
-        {
-            seed: 'forest11',
-            title: '林中小屋',
-            description: '一座木屋静静地藏在树林中，烟囱升起袅袅炊烟，温暖而宁静。',
-            date: '2026-07-15'
-        },
-        {
-            seed: 'forest12',
-            title: '阳光洒落',
-            description: '阳光从树梢缝隙中倾泻而下，在地面形成斑驳的光影画卷。',
-            date: '2026-07-20'
-        },
-        {
-            seed: 'forest13',
-            title: '秋日私语',
-            description: '虽然夏天已深，但有些树叶已悄然换上金黄，预告着秋的来临。',
-            date: '2026-08-01'
-        },
-        {
-            seed: 'forest14',
-            title: '青苔石阶',
-            description: '石阶上覆盖着厚厚的青苔，每一步都踏在柔软的绿毯上。',
-            date: '2026-08-05'
-        },
-        {
-            seed: 'forest15',
-            title: '蝴蝶翩跹',
-            description: '五彩斑斓的蝴蝶在花丛中飞舞，为森林增添了灵动的色彩。',
-            date: '2026-08-10'
-        },
-        {
-            seed: 'forest16',
-            title: '树影婆娑',
-            description: '微风吹过，树影随风摇曳，仿佛在诉说着古老的故事。',
-            date: '2026-08-14'
-        },
-        {
-            seed: 'forest17',
-            title: '溪流潺潺',
-            description: '清澈的溪水绕过石块，发出悦耳的叮咚声，令人心旷神怡。',
-            date: '2026-08-18'
-        },
-        {
-            seed: 'forest18',
-            title: '林间空地',
-            description: '一片被树木环绕的空地，阳光直射，野花遍地，是野餐的绝佳地点。',
-            date: '2026-08-21'
-        },
-        {
-            seed: 'forest19',
-            title: '雾锁山巅',
-            description: '从山顶俯瞰，云雾缭绕，森林若隐若现，宛如仙境。',
-            date: '2026-08-25'
-        },
-        {
-            seed: 'forest20',
-            title: '星空下森林',
-            description: '夜晚的森林在星空的映照下显得神秘而深邃，虫鸣此起彼伏。',
-            date: '2026-08-28'
-        }
+    // ========== 配置 ==========
+    const API_KEY = 'D0N5vGFjPdZBfoGWz3jKfZzkW7YG8TxPTKQwEM1B1xlpvpZOkOdL10FK'; // ⚠️ 请替换为您的真实 Pexels API Key
+    const SEARCH_QUERY = '森林';            // 搜索关键词
+    const COLOR = 'green';                  // 筛选绿色
+    const ORIENTATION = 'landscape';        // 横屏
+    const LOCALE = 'zh-CN';                 // 中文结果
+    const PER_PAGE = 12;                    // 每页数量
+
+    // ========== 内置备用图库（当 API 失败时使用） ==========
+    const FALLBACK_PHOTOS = [
+        { id: 10, title: '翠绿林海', description: '广袤的森林在阳光下泛起层层绿浪，生机盎然。', date: '2026-07-01' },
+        { id: 11, title: '古木参天', description: '百年的橡树与松树交织成天然穹顶，清凉幽静。', date: '2026-07-03' },
+        { id: 15, title: '落叶小径', description: '金色的落叶铺满蜿蜒的小路，脚踏上去沙沙作响。', date: '2026-07-11' },
+        { id: 18, title: '野花山坡', description: '山坡上开满绚烂的野花，蝴蝶在花间翩翩起舞。', date: '2026-07-17' },
+        { id: 20, title: '岩壁青苔', description: '陡峭的岩壁上覆盖着厚厚的苔藓，翠绿欲滴。', date: '2026-07-21' },
+        { id: 24, title: '山谷远眺', description: '站在山脊远眺，层层叠叠的绿意延伸至天际。', date: '2026-07-29' },
+        { id: 30, title: '林间小木屋', description: '一座古朴的木屋藏在森林中，屋顶爬满青藤。', date: '2026-08-10' },
+        { id: 33, title: '冰川融水', description: '冰川融水汇成清澈的溪流，两岸是顽强的苔原植被。', date: '2026-08-16' },
+        { id: 37, title: '森林沼泽', description: '宁静的沼泽中倒映着树影，水草丰美，鸟兽栖息。', date: '2026-08-24' },
+        { id: 39, title: '挺拔云杉', description: '高耸入云的云杉树直指苍穹，树下是厚厚的苔藓。', date: '2026-08-28' },
+        { id: 42, title: '河岸林带', description: '河流两岸是茂密的林带，倒影在水中形成双重世界。', date: '2026-07-06' },
+        { id: 44, title: '秋色浸染', description: '森林被秋色浸染，金黄、橙红与深绿交织。', date: '2026-07-10' },
     ];
 
-    // ===== DOM 引用 =====
+    // ========== DOM 引用 ==========
     const grid = document.getElementById('galleryGrid');
     const modal = document.getElementById('modal');
     const modalOverlay = document.getElementById('modalOverlay');
@@ -142,15 +42,76 @@
 
     let currentPhotos = [];
     let isListView = false;
-    let isAnimating = false; // 防连点锁
+    let isAnimating = false;
 
-    // ===== 辅助函数：从库中随机取 N 张 =====
-    function getRandomPhotos(count = 8) {
-        const shuffled = [...photoLibrary].sort(() => Math.random() - 0.5);
-        return shuffled.slice(0, count);
+    // ========== 从 Pexels API 获取图片 ==========
+    function fetchPhotos(page = 1) {
+        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(SEARCH_QUERY)}&color=${COLOR}&orientation=${ORIENTATION}&locale=${LOCALE}&page=${page}&per_page=${PER_PAGE}`;
+        console.log('请求 Pexels API:', url); // 调试信息
+
+        return fetch(url, {
+            headers: { 'Authorization': API_KEY }
+        })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status} ${res.statusText}`);
+            }
+            return res.json();
+        })
+        .then(data => {
+            console.log('API 响应数据:', data); // 调试信息
+            if (data.photos && data.photos.length > 0) {
+                return data.photos;
+            } else {
+                throw new Error('未找到匹配的照片，请尝试更换搜索词。');
+            }
+        })
+        .catch(err => {
+            console.warn('Pexels API 请求失败，使用备用图库:', err.message);
+            // 返回内置备用图片（转换为统一格式）
+            return getFallbackPhotos();
+        });
     }
 
-    // ===== 实际渲染内容（不带动画） =====
+    // 备用图库转换函数
+    function getFallbackPhotos() {
+        // 随机打乱并取 PER_PAGE 张
+        const shuffled = [...FALLBACK_PHOTOS].sort(() => Math.random() - 0.5);
+        const selected = shuffled.slice(0, PER_PAGE);
+        return selected.map(item => ({
+            id: item.id,
+            src: {
+                medium: `https://picsum.photos/id/${item.id}/600/400`,
+                large: `https://picsum.photos/id/${item.id}/800/600`
+            },
+            photographer: item.title,
+            alt: item.description,
+            date: item.date
+        }));
+    }
+
+    // ========== 渲染画廊 ==========
+    function renderGallery(photoArray, animate = true) {
+        if (isAnimating) return;
+
+        if (grid.children.length === 0) {
+            buildGridContent(photoArray);
+            grid.style.opacity = '1';
+            return;
+        }
+
+        isAnimating = true;
+        grid.style.transition = 'opacity 0.4s ease';
+        grid.style.opacity = '0';
+        setTimeout(() => {
+            buildGridContent(photoArray);
+            grid.style.opacity = '1';
+            setTimeout(() => {
+                isAnimating = false;
+            }, 400);
+        }, 400);
+    }
+
     function buildGridContent(photoArray) {
         grid.innerHTML = '';
         photoArray.forEach((photo, index) => {
@@ -169,16 +130,20 @@
                 this.style.transform = 'perspective(800px) rotateX(0) rotateY(0) scale(1)';
             });
 
-            const imgUrl = `https://picsum.photos/seed/${photo.seed}/600/400`;
+            // 图片地址（优先使用 medium，如果没有则用备用）
+            const imgUrl = photo.src?.medium || '';
+            const title = photo.photographer || '摄影作品';
+            const desc = photo.alt || '来自 Pexels 的美丽风景';
+            const date = photo.date || new Date().toLocaleDateString();
 
             card.innerHTML = `
                 <div class="card-image-wrap">
-                    <img src="${imgUrl}" alt="${photo.title}" loading="lazy" />
+                    <img src="${imgUrl}" alt="${title}" loading="lazy" />
                 </div>
                 <div class="card-info">
-                    <h3>${photo.title}</h3>
-                    <p>${photo.description}</p>
-                    <span class="card-date">📅 ${photo.date}</span>
+                    <h3>${title}</h3>
+                    <p>${desc}</p>
+                    <span class="card-date">📅 ${date}</span>
                 </div>
             `;
 
@@ -186,7 +151,6 @@
             grid.appendChild(card);
         });
 
-        // 恢复视图类
         if (isListView) {
             grid.classList.add('list-view');
         } else {
@@ -194,43 +158,14 @@
         }
     }
 
-    // ===== 带淡入淡出动画的渲染 =====
-    function renderGallery(photoArray, animate = true) {
-        // 如果正在动画，忽略本次调用（防连点）
-        if (isAnimating) return;
-
-        // 如果网格为空（初次加载），直接渲染
-        if (grid.children.length === 0) {
-            buildGridContent(photoArray);
-            grid.style.opacity = '1';
-            return;
-        }
-
-        // 否则执行淡出淡入动画
-        isAnimating = true;
-        grid.style.transition = 'opacity 0.4s ease';
-        grid.style.opacity = '0';
-
-        setTimeout(() => {
-            // 更新内容
-            buildGridContent(photoArray);
-            // 淡入
-            grid.style.opacity = '1';
-            // 动画结束后解锁
-            setTimeout(() => {
-                isAnimating = false;
-            }, 400);
-        }, 400);
-    }
-
-    // ===== 模态框 =====
+    // ========== 模态框 ==========
     function openModal(photo) {
-        const imgUrl = `https://picsum.photos/seed/${photo.seed}/800/600`;
+        const imgUrl = photo.src?.large || photo.src?.medium || '';
         modalImage.src = imgUrl;
-        modalImage.alt = photo.title;
-        modalTitle.textContent = photo.title;
-        modalDesc.textContent = photo.description;
-        modalDate.textContent = `📅 ${photo.date}`;
+        modalImage.alt = photo.alt || '照片';
+        modalTitle.textContent = photo.photographer || '摄影作品';
+        modalDesc.textContent = photo.alt || '来自 Pexels 的美丽风景';
+        modalDate.textContent = `📅 ${photo.date || new Date().toLocaleDateString()}`;
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
@@ -240,36 +175,42 @@
         document.body.style.overflow = '';
     }
 
-    // ===== 事件绑定 =====
+    // ========== 事件绑定 ==========
     modalClose.addEventListener('click', closeModal);
     modalOverlay.addEventListener('click', closeModal);
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
     });
 
-    // 随机探索
+    // 随机探索（翻页）
     shuffleBtn.addEventListener('click', () => {
-        if (isAnimating) return; // 动画中忽略
+        if (isAnimating) return;
         const originalText = shuffleBtn.textContent;
         shuffleBtn.textContent = '🔄 加载中...';
         shuffleBtn.disabled = true;
 
-        setTimeout(() => {
-            const newPhotos = getRandomPhotos(8);
-            currentPhotos = newPhotos;
-            renderGallery(currentPhotos, true);
-            shuffleBtn.textContent = originalText;
-            shuffleBtn.disabled = false;
-        }, 200);
+        // 随机 1~5 页
+        const randomPage = Math.floor(Math.random() * 5) + 1;
+        fetchPhotos(randomPage)
+            .then(photos => {
+                currentPhotos = photos;
+                renderGallery(currentPhotos, true);
+            })
+            .catch(err => {
+                console.error('随机探索失败:', err);
+                alert('获取图片失败，请检查网络或 API Key。');
+            })
+            .finally(() => {
+                shuffleBtn.textContent = originalText;
+                shuffleBtn.disabled = false;
+            });
     });
 
     // 切换视图
     viewToggle.addEventListener('click', () => {
         isListView = !isListView;
         viewToggle.textContent = isListView ? '⊞ 网格视图' : '⊞ 切换视图';
-        // 视图切换无需动画，直接重建
         buildGridContent(currentPhotos);
-        // 如果当前有淡出状态，重置透明度
         grid.style.opacity = '1';
         grid.style.transition = 'none';
     });
@@ -309,7 +250,14 @@
         });
     });
 
-    // ===== 初始化 =====
-    currentPhotos = getRandomPhotos(8);
-    renderGallery(currentPhotos, false); // 初次无动画
+    // ========== 初始化：加载第一页 ==========
+    fetchPhotos(1)
+        .then(photos => {
+            currentPhotos = photos;
+            renderGallery(currentPhotos, false);
+        })
+        .catch(err => {
+            console.error('初始化加载失败:', err);
+            alert('无法加载图片，请检查网络或 API Key。');
+        });
 })();

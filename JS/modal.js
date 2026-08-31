@@ -1,33 +1,28 @@
-// ===== DOM 元素引用（直接在模块内获取） =====
-const modal = document.getElementById('modal');
-const modalOverlay = document.getElementById('modalOverlay');
-const modalClose = document.getElementById('modalClose');
-const modalImage = document.getElementById('modalImage');
-const modalTitle = document.getElementById('modalTitle');
-const modalDesc = document.getElementById('modalDesc');
-const modalDate = document.getElementById('modalDate');
+// 获取 DOM 元素（在 main.js 中传入或直接获取）
+let modalElements = {};
 
-// ===== 打开模态框 =====
+export function initModal(elements) {
+    modalElements = elements;
+    // 绑定事件
+    elements.close.addEventListener('click', closeModal);
+    elements.overlay.addEventListener('click', closeModal);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+}
+
 export function openModal(photo) {
     const imgUrl = photo.src?.large || photo.src?.medium || '';
-    modalImage.src = imgUrl;
-    modalImage.alt = photo.alt || '照片';
-    modalTitle.textContent = photo.photographer || '摄影作品';
-    modalDesc.textContent = photo.alt || '来自 Pexels 的美丽风景';
-    modalDate.textContent = `📅 ${photo.date || new Date().toLocaleDateString()}`;
-    modal.classList.add('active');
+    modalElements.image.src = imgUrl;
+    modalElements.image.alt = photo.alt || '照片';
+    modalElements.title.textContent = photo.photographer || '摄影作品';
+    modalElements.desc.textContent = photo.alt || '来自 Pexels 的美丽风景';
+    modalElements.date.textContent = `📅 ${photo.date || new Date().toLocaleDateString()}`;
+    modalElements.modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
-// ===== 关闭模态框 =====
 export function closeModal() {
-    modal.classList.remove('active');
+    modalElements.modal.classList.remove('active');
     document.body.style.overflow = '';
 }
-
-// ===== 绑定关闭事件（只需绑定一次） =====
-modalClose.addEventListener('click', closeModal);
-modalOverlay.addEventListener('click', closeModal);
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-});

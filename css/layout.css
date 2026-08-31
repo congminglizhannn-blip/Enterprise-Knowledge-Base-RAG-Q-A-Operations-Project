@@ -1,0 +1,201 @@
+/* ===== 导航栏 ===== */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 250, 240, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    z-index: 1000;
+    padding: 0 2rem;
+    height: 70px;
+    display: flex;
+    align-items: center;
+}
+
+.nav-container {
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: #1e4a3b;
+    letter-spacing: -0.5px;
+}
+
+.logo-icon {
+    font-size: 1.8rem;
+}
+
+.logo-text {
+    background: linear-gradient(135deg, #2c7a4d, #1e4a3b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.nav-link {
+    text-decoration: none;
+    color: #2d4a3e;
+    font-weight: 500;
+    font-size: 1rem;
+    padding: 0.4rem 0;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    border-bottom-color: #3a9b6e;
+    color: #1a3a2e;
+}
+
+.nav-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.nav-toggle span {
+    width: 28px;
+    height: 3px;
+    background: #1e4a3b;
+    border-radius: 4px;
+    transition: 0.3s;
+}
+
+/* ===== 英雄区 ===== */
+.hero {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1600&q=80') center/cover no-repeat;
+    margin-top: 0;
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(20, 50, 30, 0.65), rgba(10, 30, 20, 0.8));
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    color: #fefcf5;
+    max-width: 760px;
+    padding: 0 1.5rem;
+    /* 动画由 Anime.js 控制，移除 CSS 动画避免冲突 */
+}
+
+.hero-title {
+    font-size: clamp(2.8rem, 8vw, 4.8rem);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.hero-subtitle {
+    font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+    opacity: 0.9;
+    margin-bottom: 2.4rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+}
+
+.btn-primary {
+    background: #e8c99b;
+    color: #1e3a2a;
+    border: none;
+    padding: 14px 40px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-radius: 60px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    letter-spacing: 0.5px;
+}
+
+.btn-primary:hover {
+    background: #f5dbb1;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.hero-scroll-indicator {
+    position: absolute;
+    bottom: 2.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    animation: bounceDown 2s infinite;
+}
+
+.hero-scroll-indicator span {
+    width: 2px;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), transparent);
+    border-radius: 4px;
+}
+
+/* ===== 底部 ===== */
+.footer {
+    background: #1a2e25;
+    color: #cdddd2;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    border-top: 1px solid #2d4a3e;
+}
+
+.footer-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.footer-text {
+    font-size: 1.1rem;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+}
+
+.footer-sub {
+    margin-top: 0.6rem;
+    font-size: 0.95rem;
+    opacity: 0.7;
+}

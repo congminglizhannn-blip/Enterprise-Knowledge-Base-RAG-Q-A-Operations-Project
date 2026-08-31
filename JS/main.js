@@ -1,26 +1,74 @@
+import { CONFIG } from './config.js';
 import { fetchPhotos } from './api.js';
-import { renderGallery, buildGridContent } from './gallery.js';
-import { closeModal } from './modal.js';
+import { renderGallery } from './gallery.js';
+import { initModal, openModal } from './modal.js';
 
-// ===== 状态变量 =====
-let currentPhotos = [];
-let isListView = false;
-let isAnimating = false;
-
-// ===== DOM 元素 =====
+// ---- DOM 引用 ----
+const grid = document.getElementById('galleryGrid');
+const modal = document.getElementById('modal');
+const modalOverlay = document.getElementById('modalOverlay');
+const modalClose = document.getElementById('modalClose');
+const modalImage = document.getElementById('modalImage');
+const modalTitle = document.getElementById('modalTitle');
+const modalDesc = document.getElementById('modalDesc');
+const modalDate = document.getElementById('modalDate');
 const shuffleBtn = document.getElementById('shuffleBtn');
 const viewToggle = document.getElementById('viewToggle');
 const exploreBtn = document.getElementById('exploreBtn');
 const navToggle = document.getElementById('navToggle');
 const navLinks = document.querySelector('.nav-links');
 
-// ===== 辅助：更新动画状态 =====
-function setIsAnimating(val) {
-    isAnimating = val;
+// ---- 状态 ----
+let currentPhotos = [];
+let isListView = false;
+let isAnimating = false;
+
+// ---- 初始化模态框 ----
+initModal({
+    modal,
+    overlay: modalOverlay,
+    close: modalClose,
+    image: modalImage,
+    title: modalTitle,
+    desc: modalDesc,
+    date: modalDate,
+});
+
+// ---- 渲染函数（带 Anime.js 动画） ----
+function renderGalleryWithAnimation(photoArray, animate = true) {
+    if (isAnimating) return;
+
+    // 如果是第一次加载或不需要动画，直接渲染
+    if (grid.children.length === 0 || !animate) {
+        renderGallery(photoArray, grid, isListView);
+        grid.style.opacity = '1';
+        return;
+    }
+
+    // 使用 Anime.js 执行淡出 → 更新 → 淡入
+    isAnimating = true;
+    anime({
+        targets: grid,
+        opacity: 0,
+        duration: 400,
+        easing: 'easeOutQuad',
+        complete: () => {
+            renderGallery(photoArray, grid, isListView);
+            anime({
+                targets: grid,
+                opacity: 1,
+                duration: 400,
+                easing: 'easeInQuad',
+                complete: () => {
+                    isAnimating = false;
+                }
+            });
+        }
+    });
 }
 
-// ===== 事件绑定 =====
-// 随机探索（翻页）
+// ---- 事件绑定 ----
+// 随机探索
 shuffleBtn.addEventListener('click', () => {
     if (isAnimating) return;
     const originalText = shuffleBtn.textContent;
@@ -31,7 +79,7 @@ shuffleBtn.addEventListener('click', () => {
     fetchPhotos(randomPage)
         .then(photos => {
             currentPhotos = photos;
-            renderGallery(currentPhotos, isListView, isAnimating, setIsAnimating, true);
+            renderGalleryWithAnimation(currentPhotos, true);
         })
         .catch(err => {
             console.error('随机探索失败:', err);
@@ -47,10 +95,9 @@ shuffleBtn.addEventListener('click', () => {
 viewToggle.addEventListener('click', () => {
     isListView = !isListView;
     viewToggle.textContent = isListView ? '⊞ 网格视图' : '⊞ 切换视图';
-    buildGridContent(currentPhotos, isListView);
-    const grid = document.getElementById('galleryGrid');
+    // 视图切换无需动画，直接重新渲染
+    renderGallery(currentPhotos, grid, isListView);
     grid.style.opacity = '1';
-    grid.style.transition = 'none';
 });
 
 // 探索按钮滚动
@@ -88,11 +135,11 @@ window.addEventListener('scroll', () => {
     });
 });
 
-// ===== 初始化：加载第一页 =====
+// ---- 应用启动 ----
 fetchPhotos(1)
     .then(photos => {
         currentPhotos = photos;
-        renderGallery(currentPhotos, isListView, isAnimating, setIsAnimating, false);
+        renderGalleryWithAnimation(currentPhotos, false);
     })
     .catch(err => {
         console.error('初始化加载失败:', err);

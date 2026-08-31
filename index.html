@@ -4,10 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>夏日森林 · 摄影画廊</title>
-    <!-- 关键：CSS 路径改为 css/style.css -->
-    <link rel="stylesheet" href="css/style.css" />
+    <!-- 引入 Anime.js (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <!-- 引入 CSS 模块（注意顺序） -->
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/animations.css" />
 </head>
 <body>
+
     <!-- 导航栏 -->
     <header class="navbar">
         <div class="nav-container">
@@ -81,7 +87,7 @@
         </div>
     </div>
 
-    <!-- 关键：改为 ES Module 入口，路径为 js/main.js -->
+    <!-- 使用 type="module" 加载主脚本 -->
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

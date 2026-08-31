@@ -1,16 +1,17 @@
 import { openModal } from './modal.js';
 
-// ===== 构建网格内容（卡片） =====
-export function buildGridContent(photoArray, isListView) {
-    const grid = document.getElementById('galleryGrid');
-    grid.innerHTML = '';
+// 渲染画廊
+export function renderGallery(photoArray, container, isListView, animate = true) {
+    if (!container) return;
+    // 清空容器
+    container.innerHTML = '';
 
     photoArray.forEach((photo, index) => {
         const card = document.createElement('div');
         card.className = 'photo-card';
         card.setAttribute('data-index', index);
 
-        // 3D 倾斜效果
+        // 3D 倾斜效果（保留）
         card.addEventListener('mousemove', function(e) {
             const rect = this.getBoundingClientRect();
             const x = (e.clientX - rect.left) / rect.width - 0.5;
@@ -38,37 +39,13 @@ export function buildGridContent(photoArray, isListView) {
         `;
 
         card.addEventListener('click', () => openModal(photo));
-        grid.appendChild(card);
+        container.appendChild(card);
     });
 
     // 应用列表视图类
     if (isListView) {
-        grid.classList.add('list-view');
+        container.classList.add('list-view');
     } else {
-        grid.classList.remove('list-view');
+        container.classList.remove('list-view');
     }
-}
-
-// ===== 带淡入淡出动画的渲染 =====
-export function renderGallery(photoArray, isListView, isAnimating, setIsAnimating, animate = true) {
-    const grid = document.getElementById('galleryGrid');
-    if (isAnimating) return;
-
-    if (grid.children.length === 0) {
-        buildGridContent(photoArray, isListView);
-        grid.style.opacity = '1';
-        return;
-    }
-
-    setIsAnimating(true);
-    grid.style.transition = 'opacity 0.4s ease';
-    grid.style.opacity = '0';
-
-    setTimeout(() => {
-        buildGridContent(photoArray, isListView);
-        grid.style.opacity = '1';
-        setTimeout(() => {
-            setIsAnimating(false);
-        }, 400);
-    }, 400);
 }

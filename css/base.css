@@ -1,0 +1,13 @@
+/* ===== 全局重置 & 基础 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f5f2eb;
+    color: #1e2b2c;
+    scroll-behavior: smooth;
+}

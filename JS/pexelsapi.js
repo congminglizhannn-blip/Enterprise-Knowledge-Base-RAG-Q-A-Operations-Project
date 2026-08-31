@@ -7,7 +7,7 @@ export function fetchPhotos(page = 1) {
     console.log('请求 Pexels API:', url);
 
     return fetch(url, {
-        headers: { 'Authorization': API_KEY }
+        headers: { 'Authorization': D0N5vGFjPdZBfoGWz3jKfZzkW7YG8TxPTKQwEM1B1xlpvpZOkOdL10FK }
     })
     .then(res => {
         if (!res.ok) {

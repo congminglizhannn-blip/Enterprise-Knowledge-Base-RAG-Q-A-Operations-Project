@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>夏日森林 · 摄影画廊</title>
-    <link rel="stylesheet" href="style.css" />
+    <!-- 关键：CSS 路径改为 css/style.css -->
+    <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-
     <!-- 导航栏 -->
     <header class="navbar">
         <div class="nav-container">
@@ -81,6 +81,7 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- 关键：改为 ES Module 入口，路径为 js/main.js -->
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

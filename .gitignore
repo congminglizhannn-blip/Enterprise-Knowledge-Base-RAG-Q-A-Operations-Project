@@ -1,0 +1,17 @@
+.env
+.env.local
+.DS_Store
+Thumbs.db
+
+node_modules/
+dist/
+.next/
+coverage/
+
+.venv/
+__pycache__/
+*.pyc
+
+uploads/
+model_cache/
+*.log

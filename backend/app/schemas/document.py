@@ -7,12 +7,15 @@ from app.models.enums import DocumentStatus, DocumentType
 class DocumentRead(BaseModel):
     id: str
     knowledge_base_id: str
+    org_id: str
     department_id: str
     file_name: str
     file_type: DocumentType
     file_path: str
     status: DocumentStatus
     chunk_count: int
+    uploaded_by: str
+    uploader_name: str | None = None
     error_message: str | None = None
     created_at: datetime
 

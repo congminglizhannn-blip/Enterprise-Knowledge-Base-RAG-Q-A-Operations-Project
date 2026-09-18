@@ -14,7 +14,7 @@ router = APIRouter()
 
 @router.get("", response_model=list[ProcessRead])
 def list_processes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    stmt = select(Process)
+    stmt = select(Process).where(Process.org_id == current_user.org_id)
     if current_user.role != UserRole.SUPER_ADMIN:
         stmt = stmt.where(Process.department_id == current_user.department_id)
     return db.scalars(stmt).all()
@@ -26,6 +26,7 @@ def create_process(payload: ProcessCreate, current_user: User = Depends(require_
         name=payload.name,
         description=payload.description,
         knowledge_base_id=payload.knowledge_base_id,
+        org_id=current_user.org_id,
         department_id=current_user.department_id,
     )
     db.add(process)

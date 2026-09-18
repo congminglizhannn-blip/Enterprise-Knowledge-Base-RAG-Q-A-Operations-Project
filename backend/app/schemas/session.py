@@ -13,6 +13,7 @@ class ChatSessionCreate(BaseModel):
 class ChatSessionRead(BaseModel):
     id: str
     knowledge_base_id: str
+    org_id: str
     department_id: str
     title: str
     created_at: datetime

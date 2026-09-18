@@ -21,7 +21,9 @@ def build_prompt(question: str, chunks: list[RetrievedChunk]) -> str:
     if is_flow_question(question):
         flow_rule = (
             "\n如果问题属于流程类问题，请在文字回答后追加 Mermaid 流程图代码块。"
-            "流程图节点不超过 10 个，节点使用中文，格式为 ```mermaid。"
+            "流程图节点不超过 10 个，节点使用中文。Mermaid 必须独立成 fenced code block："
+            "第一行只写 ```mermaid，第二行开始写 flowchart LR 或 flowchart TD，最后一行只写 ```。"
+            "不要把 Mermaid 代码和正文写在同一行。"
         )
     return (
         "你是企业知识库问答助手。只能基于给定资料回答；如果资料不足，请说明无法从当前知识库确认。"

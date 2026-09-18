@@ -8,19 +8,20 @@ from app.models.enums import DocumentStatus, DocumentType
 from app.services.chunker import chunk_text
 from app.services.embedding import EmbeddingService
 from app.services.parser.office import parse_docx_text, parse_xlsx_text
-from app.services.parser.link import parse_public_link_text
+from app.services.parser.link import parse_public_link
 from app.services.parser.pdf import parse_pdf_text
 
 
-def parse_document_text(document: Document) -> str:
+def parse_document_text(document: Document) -> tuple[str, str | None]:
     if document.file_type == DocumentType.PDF:
-        return parse_pdf_text(document.file_path)
+        return parse_pdf_text(document.file_path), None
     if document.file_type == DocumentType.DOCX:
-        return parse_docx_text(document.file_path)
+        return parse_docx_text(document.file_path), None
     if document.file_type == DocumentType.XLSX:
-        return parse_xlsx_text(document.file_path)
+        return parse_xlsx_text(document.file_path), None
     if document.file_type == DocumentType.LINK:
-        return parse_public_link_text(document.file_path)
+        parsed = parse_public_link(document.file_path)
+        return parsed.text, parsed.title
     raise ValueError("暂不支持该文档类型")
 
 
@@ -28,7 +29,9 @@ def ingest_document(db: Session, document: Document, embedding_service: Embeddin
     try:
         document.status = DocumentStatus.PROCESSING
         db.commit()
-        text = parse_document_text(document)
+        text, extracted_title = parse_document_text(document)
+        if extracted_title:
+            document.file_name = extracted_title[:255]
         chunks = chunk_text(text)
         vectors = embedding_service.embed_texts([chunk.content for chunk in chunks])
         db.query(DocumentChunk).filter(DocumentChunk.document_id == document.id).delete(synchronize_session=False)
@@ -37,6 +40,7 @@ def ingest_document(db: Session, document: Document, embedding_service: Embeddin
                 DocumentChunk(
                     document_id=document.id,
                     knowledge_base_id=document.knowledge_base_id,
+                    org_id=document.org_id,
                     department_id=document.department_id,
                     chunk_index=chunk.index,
                     content=chunk.content,

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, auth, chat, documents, knowledge_bases, processes, sessions, upload
+from app.api import admin, auth, chat, departments, documents, knowledge_bases, organizations, processes, sessions, upload, users
 from app.core.config import settings
 
 
@@ -22,6 +22,10 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(knowledge_bases.router, prefix="/api/kbs", tags=["knowledge-bases"])
+app.include_router(knowledge_bases.router, prefix="/api/knowledge-bases", tags=["knowledge-bases"])
+app.include_router(organizations.router, prefix="/api/organizations", tags=["organizations"])
+app.include_router(departments.router, prefix="/api/departments", tags=["departments"])
+app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])

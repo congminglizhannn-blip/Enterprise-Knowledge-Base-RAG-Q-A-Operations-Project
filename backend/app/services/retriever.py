@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.chunk import DocumentChunk
 from app.models.document import Document
+from app.models.enums import KnowledgeBaseScope
 from app.services.embedding import EmbeddingService
 
 
@@ -32,12 +33,34 @@ class RetrieverService:
             return True
         return any(term in content for term in terms)
 
-    def retrieve(self, db: Session, *, question: str, knowledge_base_id: str, department_id: str, limit: int = 6) -> list[RetrievedChunk]:
+    def retrieve(
+        self,
+        db: Session,
+        *,
+        question: str,
+        knowledge_base_id: str,
+        scope: KnowledgeBaseScope,
+        org_id: str,
+        department_id: str,
+        limit: int = 6,
+    ) -> list[RetrievedChunk]:
         query_embedding = self.embedding_service.embed_query(question)
+        filters = [
+            DocumentChunk.knowledge_base_id == knowledge_base_id,
+            Document.knowledge_base_id == knowledge_base_id,
+        ]
+        if scope == KnowledgeBaseScope.ORGANIZATION:
+            filters.extend([DocumentChunk.org_id == org_id, Document.org_id == org_id])
+        elif scope == KnowledgeBaseScope.DEPARTMENT:
+            filters.extend([
+                DocumentChunk.org_id == org_id,
+                DocumentChunk.department_id == department_id,
+                Document.org_id == org_id,
+            ])
         vector_stmt = (
             select(DocumentChunk, Document.file_name, DocumentChunk.embedding.cosine_distance(query_embedding).label("score"))
             .join(Document, Document.id == DocumentChunk.document_id)
-            .where(DocumentChunk.knowledge_base_id == knowledge_base_id, DocumentChunk.department_id == department_id)
+            .where(*filters)
             .order_by("score")
             .limit(limit)
         )
@@ -57,11 +80,7 @@ class RetrieverService:
         keyword_stmt = (
             select(DocumentChunk, Document.file_name)
             .join(Document, Document.id == DocumentChunk.document_id)
-            .where(
-                DocumentChunk.knowledge_base_id == knowledge_base_id,
-                DocumentChunk.department_id == department_id,
-                DocumentChunk.content.ilike(f"%{question[:20]}%"),
-            )
+            .where(*filters, DocumentChunk.content.ilike(f"%{question[:20]}%"))
             .limit(limit)
         )
         return [

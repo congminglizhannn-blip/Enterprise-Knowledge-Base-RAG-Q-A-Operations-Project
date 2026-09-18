@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass
 from urllib.parse import urlparse
 
 import httpx
@@ -10,11 +11,23 @@ from app.core.config import settings
 FEISHU_HOSTS = ("feishu.cn", "larksuite.com")
 
 
+@dataclass(frozen=True)
+class ParsedLinkText:
+    text: str
+    title: str | None = None
+
+
 def extract_html_text(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
     return soup.get_text("\n", strip=True)
+
+
+def extract_html_title(html: str) -> str | None:
+    soup = BeautifulSoup(html, "html.parser")
+    title = soup.title.get_text(" ", strip=True) if soup.title else ""
+    return title or None
 
 
 def is_feishu_url(url: str) -> bool:
@@ -66,17 +79,27 @@ def request_feishu_api(client: httpx.Client, path: str, token: str, **kwargs) ->
 
 
 def parse_feishu_link_text(url: str) -> str:
+    return parse_feishu_link(url).text
+
+
+def parse_feishu_link(url: str) -> ParsedLinkText:
     resource_type, token = extract_feishu_token(url)
+    title: str | None = None
     with httpx.Client() as client:
         tenant_token = get_feishu_tenant_access_token(client)
         if resource_type == "wiki":
-            node = request_feishu_api(client, "/wiki/v2/spaces/get_node", tenant_token, params={"token": token})
+            node = request_feishu_api(client, "/wiki/v2/spaces/get_node", tenant_token, params={"token": token, "obj_type": "wiki"})
             node_info = node.get("node") or node
             resource_type = node_info.get("obj_type") or node_info.get("object_type") or ""
             token = node_info.get("obj_token") or node_info.get("object_token") or ""
+            title = (node_info.get("title") or "").strip() or None
             if not token:
                 raise ValueError("飞书 Wiki 节点解析失败，未获取到底层文档 token")
         if resource_type == "docx":
+            if not title:
+                metadata = request_feishu_api(client, f"/docx/v1/documents/{token}", tenant_token)
+                document_info = metadata.get("document") or metadata
+                title = (document_info.get("title") or "").strip() or None
             data = request_feishu_api(client, f"/docx/v1/documents/{token}/raw_content", tenant_token)
             content = data.get("content") or data.get("text") or ""
         elif resource_type == "doc":
@@ -87,18 +110,22 @@ def parse_feishu_link_text(url: str) -> str:
     content = content.strip()
     if not content:
         raise ValueError("飞书文档解析结果为空，请确认机器人/应用具备该文档访问权限")
-    return content
+    return ParsedLinkText(text=content, title=title)
 
 
 def parse_public_link_text(url: str) -> str:
+    return parse_public_link(url).text
+
+
+def parse_public_link(url: str) -> ParsedLinkText:
     if is_feishu_url(url):
-        return parse_feishu_link_text(url)
+        return parse_feishu_link(url)
     response = httpx.get(url, timeout=15)
     response.raise_for_status()
     text = extract_html_text(response.text)
     if not text:
         raise ValueError("链接解析结果为空，请确认页面公开可访问")
-    return text
+    return ParsedLinkText(text=text, title=extract_html_title(response.text))
 
 
 async def parse_public_link_text_async(url: str) -> str:

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.knowledge_bases import get_accessible_kb
+from app.api.knowledge_bases import get_manageable_kb
 from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies import get_current_user
@@ -14,7 +14,7 @@ from app.models.enums import DocumentType
 from app.models.user import User
 from app.schemas.document import DocumentRead, LinkImportRequest
 from app.services.ingestion import detect_document_type
-from app.services.parser.link import extract_feishu_token, is_feishu_url
+from app.services.parser.link import extract_feishu_token, is_feishu_url, parse_feishu_link
 
 router = APIRouter()
 
@@ -26,7 +26,7 @@ async def upload_file(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    kb = get_accessible_kb(db, knowledge_base_id, current_user)
+    kb = get_manageable_kb(db, knowledge_base_id, current_user)
     if not file.filename:
         raise HTTPException(status_code=400, detail="文件名不能为空")
     content = await file.read()
@@ -41,6 +41,7 @@ async def upload_file(
     existing = db.scalar(
         select(Document).where(
             Document.knowledge_base_id == kb.id,
+            Document.org_id == kb.org_id,
             Document.department_id == kb.department_id,
             Document.file_name == file.filename,
         )
@@ -50,6 +51,7 @@ async def upload_file(
         db.flush()
     document = Document(
         knowledge_base_id=kb.id,
+        org_id=kb.org_id,
         department_id=kb.department_id,
         file_name=file.filename or "unknown",
         file_type=doc_type,
@@ -68,13 +70,14 @@ def import_link(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    kb = get_accessible_kb(db, payload.knowledge_base_id, current_user)
+    kb = get_manageable_kb(db, payload.knowledge_base_id, current_user)
     parsed_url = urlparse(payload.url.strip())
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
         raise HTTPException(status_code=400, detail="请粘贴公开可访问的 http/https 链接")
     existing = db.scalar(
         select(Document).where(
             Document.knowledge_base_id == kb.id,
+            Document.org_id == kb.org_id,
             Document.department_id == kb.department_id,
             Document.file_type == DocumentType.LINK,
             Document.file_path == payload.url.strip(),
@@ -86,12 +89,17 @@ def import_link(
     file_name = "公开飞书链接"
     if is_feishu_url(payload.url):
         try:
-            resource_type, token = extract_feishu_token(payload.url)
-            file_name = f"飞书{resource_type}文档-{token}"
-        except ValueError:
+            parsed = parse_feishu_link(payload.url)
+            if parsed.title:
+                file_name = parsed.title[:255]
+            else:
+                resource_type, token = extract_feishu_token(payload.url)
+                file_name = f"飞书{resource_type}文档-{token}"
+        except Exception:
             file_name = "飞书链接"
     document = Document(
         knowledge_base_id=kb.id,
+        org_id=kb.org_id,
         department_id=kb.department_id,
         file_name=file_name,
         file_type=DocumentType.LINK,

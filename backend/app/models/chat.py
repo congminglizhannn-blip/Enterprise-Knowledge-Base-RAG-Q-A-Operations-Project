@@ -13,9 +13,11 @@ class ChatSession(UUIDMixin, TimestampMixin, Base):
 
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     knowledge_base_id: Mapped[str] = mapped_column(ForeignKey("knowledge_bases.id"), index=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     department_id: Mapped[str] = mapped_column(ForeignKey("departments.id"), index=True)
     title: Mapped[str] = mapped_column(String(180), default="新会话")
 
+    organization = relationship("Organization")
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
 
 

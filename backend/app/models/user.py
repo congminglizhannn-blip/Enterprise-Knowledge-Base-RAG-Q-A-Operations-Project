@@ -15,7 +15,10 @@ class User(UUIDMixin, TimestampMixin, Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     full_name: Mapped[str | None] = mapped_column(String(120))
     role: Mapped[UserRole] = mapped_column(value_enum(UserRole, "user_role"), default=UserRole.USER)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     department_id: Mapped[str] = mapped_column(ForeignKey("departments.id"), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    organization = relationship("Organization", back_populates="users")
     department = relationship("Department", back_populates="users")

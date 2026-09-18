@@ -2,11 +2,25 @@
 
 ## Auth
 
-- `POST /api/auth/login`：账号密码登录，返回 JWT。
+- `POST /api/auth/register`：注册账号；可创建新组织，或使用邀请码加入已有组织；成功后创建服务端 session，并通过 `Set-Cookie: session_token=...` 写入 httpOnly cookie。
+- `POST /api/auth/login`：账号密码登录；成功后创建服务端 session，并通过 `Set-Cookie: session_token=...` 写入 httpOnly cookie。兼容期仍返回 Access Token 和 Refresh Token，旧前端可继续使用 Bearer Token。
 - `POST /api/auth/refresh`：使用 Refresh Token 换取新的 Access Token 和 Refresh Token。
+- `POST /api/auth/logout`：幂等登出；撤销当前 cookie session 并清除 `session_token` cookie。即使 session 已过期或不存在，也返回 `{ "success": true }`。
 - `GET /api/auth/me`：获取当前用户信息。
-- 本地演示默认 Access Token 有效期为 24 小时，可通过 `ACCESS_TOKEN_EXPIRE_MINUTES` 调整；Refresh Token 默认有效期为 7 天，可通过 `REFRESH_TOKEN_EXPIRE_MINUTES` 调整。
-- 前端收到 401 会先调用刷新接口并重试原请求；刷新失败后才清理本地登录态并提示重新登录。
+- `GET /api/auth/csrf`：已登录用户获取 CSRF token；后端将 token 哈希绑定到当前 `auth_sessions` 记录。
+- `POST /api/auth/change-password`：修改密码，需携带 `X-CSRF-Token`；成功后重新签发当前 session，并返回最新用户、组织、部门信息。
+- `POST /api/auth/invites`：超级管理员创建一次性邀请码，需携带 `X-CSRF-Token`。
+- `GET /api/auth/invites`：超级管理员查看本组织邀请码列表。
+- `DELETE /api/auth/invites/{invite_id}`：超级管理员撤销本组织邀请码，需携带 `X-CSRF-Token`。
+- `GET /api/auth/invites/validate?code=...`：校验邀请码是否可用，并返回组织、部门、角色预览信息。
+- 本地演示保留旧双令牌兼容：Access Token 有效期默认为 24 小时，Refresh Token 默认为 7 天。新认证闭环优先使用服务端 session + httpOnly cookie。
+- 已登录写操作除登出外应携带 `X-CSRF-Token`。前端 cookie 请求需使用 `credentials: "include"`。
+
+## Admin
+
+- `GET /api/admin/users`：管理员查看用户列表；超级管理员查看本组织用户，部门管理员查看本部门用户。
+- `GET /api/admin/departments`：管理员查看部门列表。
+- `POST /api/admin/users/{user_id}/reset-password`：超级管理员重置本组织用户密码，需携带 `X-CSRF-Token`；接口会撤销该用户所有旧 session，并标记 `must_change_password=true`。
 
 ## Knowledge Bases
 

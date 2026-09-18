@@ -24,3 +24,9 @@ class DocumentType(StrEnum):
 class MessageRole(StrEnum):
     USER = "user"
     ASSISTANT = "assistant"
+
+
+class KnowledgeBaseScope(StrEnum):
+    GLOBAL = "global"
+    ORGANIZATION = "organization"
+    DEPARTMENT = "department"

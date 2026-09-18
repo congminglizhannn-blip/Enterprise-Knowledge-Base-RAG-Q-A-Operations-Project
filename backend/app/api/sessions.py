@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.knowledge_bases import get_accessible_kb
@@ -15,8 +15,10 @@ router = APIRouter()
 
 def get_accessible_session(db: Session, session_id: str, user: User) -> ChatSession:
     stmt = select(ChatSession).where(ChatSession.id == session_id)
-    if user.role != UserRole.SUPER_ADMIN:
-        stmt = stmt.where(ChatSession.user_id == user.id, ChatSession.department_id == user.department_id)
+    if user.role == UserRole.SUPER_ADMIN:
+        stmt = stmt.where(or_(ChatSession.org_id == user.org_id, ChatSession.user_id == user.id))
+    else:
+        stmt = stmt.where(ChatSession.org_id == user.org_id, ChatSession.user_id == user.id)
     session = db.scalar(stmt)
     if not session:
         raise HTTPException(status_code=404, detail="会话不存在或无权限")
@@ -26,8 +28,10 @@ def get_accessible_session(db: Session, session_id: str, user: User) -> ChatSess
 @router.get("", response_model=list[ChatSessionRead])
 def list_sessions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     stmt = select(ChatSession).order_by(ChatSession.updated_at.desc()).limit(50)
-    if current_user.role != UserRole.SUPER_ADMIN:
-        stmt = stmt.where(ChatSession.user_id == current_user.id, ChatSession.department_id == current_user.department_id)
+    if current_user.role == UserRole.SUPER_ADMIN:
+        stmt = stmt.where(or_(ChatSession.org_id == current_user.org_id, ChatSession.user_id == current_user.id))
+    else:
+        stmt = stmt.where(ChatSession.org_id == current_user.org_id, ChatSession.user_id == current_user.id)
     return db.scalars(stmt).all()
 
 
@@ -37,6 +41,7 @@ def create_session(payload: ChatSessionCreate, current_user: User = Depends(get_
     session = ChatSession(
         user_id=current_user.id,
         knowledge_base_id=kb.id,
+        org_id=kb.org_id,
         department_id=kb.department_id,
         title=(payload.title or "新会话")[:180],
     )

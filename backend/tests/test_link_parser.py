@@ -1,4 +1,4 @@
-from app.services.parser.link import extract_feishu_token, extract_html_text, is_feishu_url
+from app.services.parser.link import extract_feishu_token, extract_html_text, extract_html_title, is_feishu_url
 
 
 def test_extract_html_text_removes_scripts_and_styles() -> None:
@@ -19,6 +19,11 @@ def test_extract_html_text_removes_scripts_and_styles() -> None:
     assert "提交申请后进入部门审批" in text
     assert "window.secret" not in text
     assert "color: red" not in text
+
+
+def test_extract_html_title() -> None:
+    assert extract_html_title("<html><head><title>知识库流程文档</title></head><body></body></html>") == "知识库流程文档"
+    assert extract_html_title("<html><body>no title</body></html>") is None
 
 
 def test_feishu_url_detection_and_token_extraction() -> None:

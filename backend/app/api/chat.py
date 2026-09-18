@@ -26,18 +26,27 @@ async def stream_chat(payload: ChatRequest, current_user: User = Depends(get_cur
         session = get_accessible_session(db, payload.session_id, current_user)
         if session.knowledge_base_id != kb.id:
             session.knowledge_base_id = kb.id
+            session.org_id = kb.org_id
             session.department_id = kb.department_id
     else:
         session = ChatSession(
             user_id=current_user.id,
             knowledge_base_id=kb.id,
+            org_id=kb.org_id,
             department_id=kb.department_id,
             title=payload.question[:60] or "新会话",
         )
         db.add(session)
         db.flush()
     retriever = RetrieverService(get_embedding_service())
-    chunks = retriever.retrieve(db, question=payload.question, knowledge_base_id=kb.id, department_id=kb.department_id)
+    chunks = retriever.retrieve(
+        db,
+        question=payload.question,
+        knowledge_base_id=kb.id,
+        scope=kb.scope,
+        org_id=kb.org_id,
+        department_id=kb.department_id,
+    )
     prompt = build_prompt(payload.question, chunks)
     citations = [
         {

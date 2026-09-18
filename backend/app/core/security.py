@@ -1,4 +1,6 @@
 from datetime import UTC, datetime, timedelta
+import hashlib
+import secrets
 from typing import Any
 
 from jose import jwt
@@ -41,3 +43,15 @@ def create_refresh_token(subject: str) -> str:
         "refresh",
         timedelta(minutes=settings.refresh_token_expire_minutes),
     )
+
+
+def create_secure_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def create_invite_code() -> str:
+    return secrets.token_urlsafe(16)
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

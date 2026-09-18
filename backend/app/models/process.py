@@ -10,6 +10,7 @@ class Process(UUIDMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(160), index=True)
     description: Mapped[str | None] = mapped_column(Text)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     department_id: Mapped[str] = mapped_column(ForeignKey("departments.id"), index=True)
     knowledge_base_id: Mapped[str | None] = mapped_column(ForeignKey("knowledge_bases.id"), index=True)
 

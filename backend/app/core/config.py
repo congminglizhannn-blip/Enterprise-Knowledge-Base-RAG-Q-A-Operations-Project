@@ -53,6 +53,7 @@ def get_settings() -> Settings:
             "FEISHU_APP_ID": "feishu_app_id",
             "App_App Secret": "feishu_app_secret",
             "App_App_Secret": "feishu_app_secret",
+            "App_Secret": "feishu_app_secret",
             "APP_APP_SECRET": "feishu_app_secret",
             "APP_SECRET": "feishu_app_secret",
             "FEISHU_APP_SECRET": "feishu_app_secret",

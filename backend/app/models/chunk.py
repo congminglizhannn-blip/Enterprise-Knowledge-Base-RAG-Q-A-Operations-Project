@@ -13,6 +13,7 @@ class DocumentChunk(UUIDMixin, TimestampMixin, Base):
 
     document_id: Mapped[str] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
     knowledge_base_id: Mapped[str] = mapped_column(ForeignKey("knowledge_bases.id", ondelete="CASCADE"), index=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     department_id: Mapped[str] = mapped_column(ForeignKey("departments.id"), index=True)
     chunk_index: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
@@ -23,4 +24,5 @@ class DocumentChunk(UUIDMixin, TimestampMixin, Base):
     source_url: Mapped[str | None] = mapped_column(Text)
     page_number: Mapped[int | None] = mapped_column(Integer)
 
+    organization = relationship("Organization")
     document = relationship("Document", back_populates="chunks")

@@ -11,6 +11,7 @@ class Document(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "documents"
 
     knowledge_base_id: Mapped[str] = mapped_column(ForeignKey("knowledge_bases.id", ondelete="CASCADE"), index=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     department_id: Mapped[str] = mapped_column(ForeignKey("departments.id"), index=True)
     file_name: Mapped[str] = mapped_column(String(255))
     file_type: Mapped[DocumentType] = mapped_column(value_enum(DocumentType, "document_type"))
@@ -20,5 +21,6 @@ class Document(UUIDMixin, TimestampMixin, Base):
     uploaded_by: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     error_message: Mapped[str | None] = mapped_column(Text)
 
+    organization = relationship("Organization")
     knowledge_base = relationship("KnowledgeBase", back_populates="documents")
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")

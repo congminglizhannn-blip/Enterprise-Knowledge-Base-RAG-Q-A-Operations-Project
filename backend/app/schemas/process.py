@@ -11,6 +11,7 @@ class ProcessRead(BaseModel):
     id: str
     name: str
     description: str | None
+    org_id: str
     department_id: str
     knowledge_base_id: str | None
 

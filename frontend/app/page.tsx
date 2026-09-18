@@ -9,17 +9,13 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
-  Database,
   FileText,
   GitBranch,
   History,
-  Home,
   Layers3,
-  LogOut,
   MessageSquareText,
   Search,
   SendHorizontal,
-  Settings,
   ShieldCheck,
   UploadCloud,
   UsersRound,
@@ -36,6 +32,7 @@ import type { RegisterRequest, UserInfo } from "@/features/auth/types";
 import { InvitePage } from "@/features/admin/InvitePage";
 import { KnowledgeBaseConfigPanel } from "@/features/admin/KnowledgeBaseConfigPanel";
 import { OrganizationPanel } from "@/features/admin/OrganizationPanel";
+import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
@@ -264,18 +261,17 @@ export default function App() {
 
   return (
     <AuthGate onUnauthenticated={() => setAuthView("login")} onMustChangePassword={() => setAuthView("change-password")}>
-    <div className="app-shell">
-      <Sidebar view={view} setView={setView} />
-      <main className="main-panel">
-        <Topbar
-          title={title}
-          role={role}
-          orgName={auth.org?.name ?? "未识别组织"}
-          departmentName={auth.department?.name ?? "未识别部门"}
-          userName={auth.user?.full_name || auth.user?.username || "当前用户"}
-          onLogout={handleLogout}
-        />
-        {notice && <div className="notice-bar">{notice}</div>}
+      <AppShell
+        active={view}
+        onNavigate={setView}
+        title={title}
+        role={role}
+        orgName={auth.org?.name ?? "未识别组织"}
+        departmentName={auth.department?.name ?? "未识别部门"}
+        userName={auth.user?.full_name || auth.user?.username || "当前用户"}
+        onLogout={handleLogout}
+        notice={notice}
+      >
         {view === "dashboard" && (
           <Dashboard
             setView={setView}
@@ -336,8 +332,7 @@ export default function App() {
         {view === "history" && <HistoryPage sessions={chatSessions} messages={messages} setNotice={setNotice} />}
         {view === "admin" && <AdminPage role={role} refreshDocuments={refreshDocuments} authenticatedFetch={authenticatedFetch} />}
         {view === "account" && <SessionsPanel />}
-      </main>
-    </div>
+      </AppShell>
     </AuthGate>
   );
 
@@ -466,75 +461,6 @@ export default function App() {
       throw error;
     }
   }
-}
-
-function Sidebar({ view, setView }: { view: View; setView: (view: View) => void }) {
-  const items = [
-    ["chat", MessageSquareText, "问答工作台"],
-    ["dashboard", Home, "运营总览"],
-    ["knowledge", BookOpen, "知识库"],
-    ["ingestion", UploadCloud, "文档入库"],
-    ["workflow", GitBranch, "流程图"],
-    ["history", History, "问答历史"],
-    ["admin", Settings, "系统管理"],
-    ["account", ShieldCheck, "账号安全"],
-  ] as const;
-  return (
-    <aside className="sidebar">
-      <div className="brand">
-        <Database size={28} />
-        <div>
-          <strong>企业知识库</strong>
-          <span>RAG Operations</span>
-        </div>
-      </div>
-      <nav>
-        {items.map(([key, Icon, label]) => (
-          <button className={view === key ? "active" : ""} key={key} onClick={() => setView(key)}>
-            <Icon size={18} />
-            {label}
-          </button>
-        ))}
-      </nav>
-      <div className="sidebar-note">
-        <ShieldCheck size={18} />
-        SQL 层部门强隔离
-      </div>
-    </aside>
-  );
-}
-
-function Topbar({
-  title,
-  role,
-  orgName,
-  departmentName,
-  userName,
-  onLogout,
-}: {
-  title: string;
-  role: Role;
-  orgName: string;
-  departmentName: string;
-  userName: string;
-  onLogout: () => void;
-}) {
-  const isSuperAdmin = role === "超级管理员";
-  const contextText = isSuperAdmin ? "全组织管理视角" : `${orgName} · ${departmentName}`;
-
-  return (
-    <header className="topbar">
-      <div>
-        <h2>{title}</h2>
-        <span>{contextText}</span>
-      </div>
-      <div className="topbar-actions">
-        {!isSuperAdmin && <span className="pill"><Building2 size={16} />{orgName}</span>}
-        <span className="pill"><UsersRound size={16} />{userName} · {role}</span>
-        <button className="icon-btn" onClick={onLogout} title="退出登录"><LogOut size={18} /></button>
-      </div>
-    </header>
-  );
 }
 
 function Dashboard({

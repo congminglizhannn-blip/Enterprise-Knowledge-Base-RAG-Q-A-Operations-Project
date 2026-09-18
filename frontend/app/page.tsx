@@ -36,6 +36,7 @@ import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
 import { Composer } from "@/features/chat/Composer";
+import { CitationPanel } from "@/features/chat/CitationPanel";
 import { MessageList } from "@/features/chat/MessageList";
 import type { ChatMessage } from "@/features/chat/types";
 import { DocumentDetailModal } from "@/features/documents/DocumentDetailModal";
@@ -788,30 +789,12 @@ function ChatPage({
         <MessageList messages={messages} />
         <Composer question={question} disabled={isRequesting} onQuestionChange={setQuestion} onSubmit={ask} />
       </Card>
-      <aside className="citation-panel">
-        <h3>引用来源</h3>
-        {messages.length === 0 ? (
-          <div className="empty-citation">
-            <FileText size={22} />
-            <strong>暂无引用</strong>
-            <p>提交问题并完成 RAG 召回后，这里才展示命中的文档名称和原文片段。</p>
-          </div>
-        ) : citations.length > 0 ? (
-          citations.map((citation) => (
-            <button className="citation-card" disabled={isRequesting} key={citation.chunk_id ?? `${citation.document_name}-${citation.content_preview}`} onClick={() => openCitation(citation)}>
-              <FileText size={18} />
-              <strong>{citation.document_name}</strong>
-              <p>{citation.content_preview}</p>
-            </button>
-          ))
-        ) : (
-          <div className="empty-citation">
-            <FileText size={22} />
-            <strong>未命中相关片段</strong>
-            <p>本次问题没有检索到可引用的 chunk。请确认文档已解析完成，或换一种更贴近原文的问法。</p>
-          </div>
-        )}
-      </aside>
+      <CitationPanel
+        citations={citations}
+        hasMessages={messages.length > 0}
+        disabled={isRequesting}
+        onOpenDocument={openCitation}
+      />
       {selectedDocument && <DocumentDetailModal document={selectedDocument} onClose={() => setSelectedDocument(null)} />}
     </section>
   );

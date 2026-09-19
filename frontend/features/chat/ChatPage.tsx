@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
 import { DocumentDetailModal } from "@/features/documents/DocumentDetailModal";
@@ -9,6 +9,7 @@ import { ApiError, type AuthenticatedFetch } from "@/types/common";
 import { CitationPanel } from "./CitationPanel";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
+import { streamChat } from "./stream";
 import type { ChatMessage, ChatSessionSummary, CitationRow } from "./types";
 
 type LoadedSessionMessage = ChatMessage & {
@@ -53,6 +54,19 @@ export function ChatPage({
 }: ChatPageProps) {
   const [selectedDocument, setSelectedDocument] = useState<DocumentDetail | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
+
+  function abortCurrentStream() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }
 
   async function openCitation(citation: CitationRow) {
     if (!citation.document_id) return;
@@ -81,6 +95,7 @@ export function ChatPage({
   }
 
   async function loadSession(sessionId: string) {
+    abortCurrentStream();
     if (isRequesting) return;
     if (isOfflineNow()) {
       setMessages((current) => [...current, { role: "assistant", content: NETWORK_ERROR_MESSAGE }]);
@@ -130,57 +145,41 @@ export function ChatPage({
       setMessages((current) => [...current, { role: "assistant", content: "当前账号暂无可用知识库，请先由管理员创建知识库或切换到有权限的组织。" }]);
       return;
     }
+    abortCurrentStream();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setMessages((current) => [...current, { role: "user", content: trimmedQuestion }, { role: "assistant", content: "正在检索当前知识库..." }]);
     setCitations([]);
     setQuestion("");
     setIsRequesting(true);
+    let answer = "";
     try {
-      const response = await authenticatedFetch("/api/chat/stream", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      await streamChat({
+        sessionId: activeSessionId ?? undefined,
+        knowledgeBaseId: selectedKb.id,
+        question: trimmedQuestion,
+        signal: controller.signal,
+        onMetadata: (metadata) => {
+          if (metadata.session_id) setActiveSessionId(metadata.session_id);
+          if (metadata.citations) setCitations(metadata.citations);
         },
-        body: JSON.stringify({ knowledge_base_id: selectedKb.id, question: trimmedQuestion, session_id: activeSessionId }),
-      });
-      if (response.status === 401) {
-        onUnauthorized();
-        return;
-      }
-      if (!response.ok || !response.body) throw new Error(await response.text());
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let answer = "";
-      const handleBlock = (block: string) => {
-        const normalizedBlock = block.replace(/\r\n/g, "\n");
-        const eventType = normalizedBlock.match(/^event:\s*(.+)$/m)?.[1]?.trim();
-        const dataLines = normalizedBlock.split("\n").filter((line) => line.startsWith("data:"));
-        const data = dataLines.map((line) => line.replace(/^data:\s?/, "")).join("\n");
-        if (!data) return;
-        if (eventType === "metadata" || eventType === "done") {
-          const parsed = JSON.parse(data);
-          if (parsed.session_id) setActiveSessionId(parsed.session_id);
-          if (parsed.citations) setCitations(parsed.citations);
-          if (eventType === "done") refreshSessions();
-        }
-        if (eventType === "delta") {
-          answer += data;
+        onDelta: (text) => {
+          answer += text;
           setMessages((current) => current.map((msg, index) => index === current.length - 1 ? { ...msg, content: answer } : msg));
-        }
-      };
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          if (buffer.trim()) handleBlock(buffer);
-          break;
-        }
-        buffer += decoder.decode(value, { stream: true });
-        const blocks = buffer.split(/\r?\n\r?\n/);
-        buffer = blocks.pop() ?? "";
-        for (const block of blocks) {
-          handleBlock(block);
-        }
-      }
+        },
+        onDone: ({ sessionId, citations }) => {
+          if (sessionId) setActiveSessionId(sessionId);
+          setCitations(citations);
+          void refreshSessions();
+        },
+        onError: (error) => {
+          if (error instanceof ApiError && error.status === 401) {
+            onUnauthorized();
+            return;
+          }
+          setMessages((current) => current.map((msg, index) => index === current.length - 1 ? { ...msg, content: toFriendlyError(error, "问答失败，请确认后端服务、DeepSeek 配置和当前知识库解析状态。") } : msg));
+        },
+      });
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         onUnauthorized();
@@ -188,6 +187,9 @@ export function ChatPage({
       }
       setMessages((current) => current.map((msg, index) => index === current.length - 1 ? { ...msg, content: toFriendlyError(error, "问答失败，请确认后端服务、DeepSeek 配置和当前知识库解析状态。") } : msg));
     } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+      }
       setIsRequesting(false);
     }
   }
@@ -196,7 +198,14 @@ export function ChatPage({
     <section className="chat-layout">
       <aside className="chat-side">
         <label>当前知识库</label>
-        <select value={selectedKb?.id ?? ""} disabled={availableKbs.length === 0} onChange={(event) => setSelectedKb(availableKbs.find((kb) => kb.id === event.target.value) ?? null)}>
+        <select
+          value={selectedKb?.id ?? ""}
+          disabled={availableKbs.length === 0}
+          onChange={(event) => {
+            abortCurrentStream();
+            setSelectedKb(availableKbs.find((kb) => kb.id === event.target.value) ?? null);
+          }}
+        >
           {availableKbs.length === 0 && <option value="">暂无可用知识库</option>}
           {availableKbs.map((kb) => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
         </select>

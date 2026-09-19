@@ -19,14 +19,16 @@ type TextBlock = {
 type MessageBlock = MermaidBlock | TextBlock;
 
 export function MessageList({ messages }: MessageListProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: "end" });
+    const container = messagesRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
   }, [messages]);
 
   return (
-    <div className="messages">
+    <div className="messages" ref={messagesRef}>
       {messages.length === 0 ? (
         <div className="empty-chat">
           <MessageSquareText size={30} />
@@ -36,7 +38,6 @@ export function MessageList({ messages }: MessageListProps) {
       ) : (
         <>
           {messages.map((message, index) => <MessageBubble message={message} key={`${message.role}-${index}`} />)}
-          <div ref={messagesEndRef} />
         </>
       )}
     </div>
@@ -135,6 +136,18 @@ function parseMermaidFlow(code: string) {
       nodeOrder.push(id);
     }
     nodesById.set(id, label);
+  }
+  if (!nodeOrder.length) {
+    const lines = normalized.split("\n").slice(1);
+    for (const line of lines) {
+      const parts = line.split(/-->|---|==>/).map((part) => part.trim()).filter(Boolean);
+      for (const label of parts) {
+        const normalizedLabel = label.replace(/^["']|["']$/g, "").trim();
+        if (!normalizedLabel || nodesById.has(normalizedLabel)) continue;
+        nodeOrder.push(normalizedLabel);
+        nodesById.set(normalizedLabel, normalizedLabel);
+      }
+    }
   }
 
   return {

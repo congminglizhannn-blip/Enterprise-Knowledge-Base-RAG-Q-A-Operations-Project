@@ -37,12 +37,13 @@
 ## Upload
 
 - `POST /api/upload/file`：上传 Word、Excel、文本型 PDF，创建待解析文档记录；同一知识库内同名文件会替换旧记录并级联清理旧 chunk。
-- `POST /api/upload/link`：导入公开链接记录，创建待解析文档记录；仅接受非空 `http/https` 链接，同一知识库内重复链接会替换旧记录。飞书链接支持 `docx`、旧版 `doc/docs` 和 `wiki` 文档节点，解析时通过飞书 OpenAPI 获取纯文本内容后再分块入库。
+- `POST /api/upload/link`：导入公开链接记录，创建待解析文档记录；仅接受非空 `http/https` 链接，同一知识库内重复链接会替换旧记录。飞书链接支持 `docx`、旧版 `doc/docs`、`wiki` 文档节点、`sheets` 电子表格和 `base/bitable` 多维表格，解析时通过飞书 OpenAPI 获取文本或表格内容后再分块入库。
 
 ## Feishu Link Parsing
 
 - 环境变量：推荐使用 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`；同时兼容本地 `.env` 中的 `App_ID`、`App_App Secret`。
-- 解析链路：链接入库创建待解析记录；点击解析后执行飞书 tenant token 获取、文档 token 识别、纯文本拉取、分块、本地 Embedding 和向量写入。
+- 解析链路：链接入库创建待解析记录；点击解析后执行飞书 tenant token 获取、资源 token 识别、文档纯文本或表格行数据拉取、分块、本地 Embedding 和向量写入。
+- 表格支持：电子表格读取 sheet 列表和单表 values；多维表格读取 table 列表和 records，并将字段名与单元格值转为可检索文本。
 - 失败提示：未配置飞书密钥、应用无文档权限、文档内容为空或链接类型不支持时，会返回解析失败原因。
 
 ## Chat

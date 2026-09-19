@@ -150,19 +150,27 @@ export async function streamChat(params: StreamChatParams): Promise<void> {
       }
     };
 
-    while (true) {
-      if (signal?.aborted) return;
+    try {
+      while (true) {
+        if (signal?.aborted) return;
 
-      const { value, done } = await reader.read();
-      if (done) {
-        if (buffer.trim()) handleBlock(buffer);
-        break;
+        const { value, done } = await reader.read();
+        if (done) {
+          if (buffer.trim()) handleBlock(buffer);
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split(/\r?\n\r?\n/);
+        buffer = blocks.pop() ?? "";
+        blocks.forEach(handleBlock);
       }
-
-      buffer += decoder.decode(value, { stream: true });
-      const blocks = buffer.split(/\r?\n\r?\n/);
-      buffer = blocks.pop() ?? "";
-      blocks.forEach(handleBlock);
+    } finally {
+      try {
+        reader.releaseLock();
+      } catch {
+        // The stream may already be closed or released.
+      }
     }
 
     if (!receivedDone && !signal?.aborted) {

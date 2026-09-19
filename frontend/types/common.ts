@@ -14,6 +14,8 @@ export type PageResult<T> = {
   pageSize: number;
 };
 
+export type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
 export type ApiErrorCode =
   | "BAD_REQUEST"
   | "UNAUTHORIZED"

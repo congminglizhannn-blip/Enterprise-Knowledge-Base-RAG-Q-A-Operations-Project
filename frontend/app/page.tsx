@@ -26,7 +26,8 @@ import { RegisterPage } from "@/features/auth/RegisterPage";
 import { SessionsPanel } from "@/features/auth/SessionsPanel";
 import { useAuth } from "@/features/auth/hooks";
 import { apiFetch } from "@/lib/apiClient";
-import { ApiError } from "@/types/common";
+import { NETWORK_ERROR_MESSAGE, isNetworkError, isOfflineNow, toFriendlyError } from "@/lib/errors";
+import { ApiError, type AuthenticatedFetch } from "@/types/common";
 import type { RegisterRequest, UserInfo } from "@/features/auth/types";
 import { InvitePage } from "@/features/admin/InvitePage";
 import { KnowledgeBaseConfigPanel } from "@/features/admin/KnowledgeBaseConfigPanel";
@@ -38,7 +39,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Composer } from "@/features/chat/Composer";
 import { CitationPanel } from "@/features/chat/CitationPanel";
 import { MessageList } from "@/features/chat/MessageList";
-import type { ChatMessage } from "@/features/chat/types";
+import type { ChatMessage, ChatSessionSummary, CitationRow } from "@/features/chat/types";
 import { DocumentDetailModal } from "@/features/documents/DocumentDetailModal";
 import { IngestionPage } from "@/features/documents/IngestionPage";
 import { KnowledgePage } from "@/features/documents/KnowledgePage";
@@ -46,24 +47,11 @@ import type { BackendDocument, BackendKnowledgeBase, DocumentDetail, KnowledgeBa
 
 type View = "dashboard" | "knowledge" | "ingestion" | "chat" | "workflow" | "history" | "admin" | "account";
 type Role = "超级管理员" | "部门管理员" | "普通用户";
-type CitationRow = {
-  document_id?: string | null;
-  document_name: string;
-  content_preview: string;
-  chunk_id?: string;
-  score?: number | null;
-};
 
 type FlowStep = {
   title: string;
   desc: string;
   kind?: "start" | "process" | "decision" | "risk" | "done";
-};
-type ChatSessionSummary = {
-  id: string;
-  knowledge_base_id: string;
-  title: string;
-  updated_at: string;
 };
 
 const knowledgeBases: KnowledgeBase[] = [
@@ -72,7 +60,6 @@ const knowledgeBases: KnowledgeBase[] = [
   { id: "kb-3", name: "售后 FAQ 知识库", dept: "客户成功部", docs: 9, chunks: 143, status: "部门隔离", updated: "2026-09-05 11:05" },
 ];
 
-type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 type AuthView = "login" | "register" | "change-password";
 
 type AdminStats = {
@@ -92,22 +79,6 @@ type AdminUserRow = {
   is_active: boolean;
   must_change_password: boolean;
 };
-
-const NETWORK_ERROR_MESSAGE = "网络异常，无法连接服务器，请检查连接后重试。";
-
-function isNetworkError(error: unknown) {
-  return error instanceof ApiError && (error.status === 0 || error.code === "NETWORK_ERROR");
-}
-
-function isOfflineNow() {
-  return typeof navigator !== "undefined" && navigator.onLine === false;
-}
-
-function toFriendlyError(error: unknown, fallback: string) {
-  if (isNetworkError(error)) return NETWORK_ERROR_MESSAGE;
-  if (error instanceof ApiError && error.message) return error.message;
-  return fallback;
-}
 
 type AdminDepartmentRow = {
   id: string;

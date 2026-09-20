@@ -1,7 +1,29 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
+import { useAuth } from "@/features/auth/hooks";
 
 export default function ChangePasswordRoute() {
-  return <ChangePasswordPage onLogout={async () => {}} onPasswordChanged={() => {}} />;
+  const router = useRouter();
+  const auth = useAuth();
+
+  useEffect(() => {
+    if (auth.status === "unauthenticated") {
+      router.replace("/login?redirect=/change-password");
+    }
+  }, [auth.status, router]);
+
+  async function handleLogout() {
+    await auth.logout();
+    router.replace("/login");
+  }
+
+  return (
+    <ChangePasswordPage
+      onLogout={handleLogout}
+      onPasswordChanged={() => router.replace("/")}
+    />
+  );
 }

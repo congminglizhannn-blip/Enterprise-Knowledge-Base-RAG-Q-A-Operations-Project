@@ -17,3 +17,8 @@ export function formatCount(value: number | null | undefined, unit = ""): string
   const count = typeof value === "number" && Number.isFinite(value) ? value : 0;
   return `${count}${unit}`;
 }
+
+export function formatTokenCount(value: number): string {
+  if (value >= 1000) return `${Math.round(value / 100) / 10}k`;
+  return String(value);
+}

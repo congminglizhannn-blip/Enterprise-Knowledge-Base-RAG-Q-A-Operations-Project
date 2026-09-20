@@ -35,15 +35,19 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
+import { Stat } from "@/components/ui/Stat";
 import { ChatPage } from "@/features/chat/ChatPage";
 import { HistoryPage } from "@/features/chat/HistoryPage";
 import type { ChatMessage, ChatSessionSummary, CitationRow } from "@/features/chat/types";
 import { IngestionPage } from "@/features/documents/IngestionPage";
 import { KnowledgePage } from "@/features/documents/KnowledgePage";
 import type { BackendDocument, BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
+import type { AdminDepartmentRow, AdminStats, AdminUserRow } from "@/features/admin/types";
+import type { Role } from "@/features/auth/types";
+import { mapBackendRole } from "@/features/auth/utils";
+import { formatTokenCount } from "@/lib/format";
 
 type View = "dashboard" | "knowledge" | "ingestion" | "chat" | "workflow" | "history" | "admin" | "account";
-type Role = "超级管理员" | "部门管理员" | "普通用户";
 
 type FlowStep = {
   title: string;
@@ -58,37 +62,6 @@ const knowledgeBases: KnowledgeBase[] = [
 ];
 
 type AuthView = "login" | "register" | "change-password";
-
-type AdminStats = {
-  users: number;
-  departments: number;
-  knowledge_bases: number;
-  today_tokens: number;
-};
-
-type AdminUserRow = {
-  id: string;
-  username: string;
-  role: string;
-  org_id: string;
-  department_id: string;
-  department_name?: string | null;
-  is_active: boolean;
-  must_change_password: boolean;
-};
-
-type AdminDepartmentRow = {
-  id: string;
-  name: string;
-  org_id: string;
-  description?: string | null;
-};
-
-function mapBackendRole(role: string): Role {
-  if (role === "super_admin") return "超级管理员";
-  if (role === "dept_admin") return "部门管理员";
-  return "普通用户";
-}
 
 function mapKnowledgeBase(kb: BackendKnowledgeBase): KnowledgeBase {
   return {
@@ -784,20 +757,5 @@ function AdminPage({
         </Modal>
       )}
     </section>
-  );
-}
-
-function formatTokenCount(value: number) {
-  if (value >= 1000) return `${Math.round(value / 100) / 10}k`;
-  return String(value);
-}
-
-function Stat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
-  return (
-    <article className="stat-card">
-      <Icon size={22} />
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
   );
 }

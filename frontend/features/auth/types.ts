@@ -79,3 +79,5 @@ export type AuthSessionInfo = {
 };
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "error";
+
+export type Role = "超级管理员" | "部门管理员" | "普通用户";

@@ -1,17 +1,19 @@
-export type AuthView = "login" | "register" | "change-password";
-export type BusinessView = "chat" | "documents" | "knowledge" | "admin" | "account";
-export type View = AuthView | BusinessView;
+export type BusinessView = "dashboard" | "knowledge" | "ingestion" | "chat" | "workflow" | "history" | "admin" | "account";
+export type View = BusinessView;
 
 export const BUSINESS_VIEWS: readonly BusinessView[] = [
-  "chat",
-  "documents",
+  "dashboard",
   "knowledge",
+  "ingestion",
+  "chat",
+  "workflow",
+  "history",
   "admin",
   "account",
 ];
 
 export const ROUTED_VIEWS: ReadonlySet<BusinessView> = new Set();
-export const STATIC_KNOWN_ROUTES: readonly string[] = ["/"];
+export const STATIC_KNOWN_ROUTES: readonly string[] = ["/", "/login", "/register", "/change-password"];
 
 export const KNOWN_ROUTES: readonly string[] = [
   ...STATIC_KNOWN_ROUTES,

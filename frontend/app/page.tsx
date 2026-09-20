@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Activity,
   BookOpen,
@@ -12,15 +13,12 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { AuthGate } from "@/features/auth/AuthGate";
-import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
-import { LoginPage } from "@/features/auth/LoginPage";
-import { RegisterPage } from "@/features/auth/RegisterPage";
 import { SessionsPanel } from "@/features/auth/SessionsPanel";
 import { useAuth } from "@/features/auth/hooks";
 import { apiFetch } from "@/lib/apiClient";
 import { NETWORK_ERROR_MESSAGE, isNetworkError, toFriendlyError } from "@/lib/errors";
 import { ApiError, type AuthenticatedFetch } from "@/types/common";
-import type { RegisterRequest, UserInfo } from "@/features/auth/types";
+import type { UserInfo } from "@/features/auth/types";
 import { AdminPage } from "@/features/admin/AdminPage";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
@@ -42,8 +40,6 @@ const knowledgeBases: KnowledgeBase[] = [
   { id: "kb-2", name: "项目交付流程库", dept: "产品运营部", docs: 12, chunks: 214, status: "解析完成", updated: "2026-09-06 18:42" },
   { id: "kb-3", name: "售后 FAQ 知识库", dept: "客户成功部", docs: 9, chunks: 143, status: "部门隔离", updated: "2026-09-05 11:05" },
 ];
-
-type AuthView = "login" | "register" | "change-password";
 
 function mapKnowledgeBase(kb: BackendKnowledgeBase): KnowledgeBase {
   return {
@@ -106,14 +102,12 @@ function withKbStats(kbs: KnowledgeBase[], rows: UploadRow[]) {
 }
 
 export default function App() {
+  const router = useRouter();
   const auth = useAuth();
-  const [authView, setAuthView] = useState<AuthView>("login");
   const [view, setView] = useState<View>("chat");
   const [role, setRole] = useState<Role>("部门管理员");
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
   const [availableKbs, setAvailableKbs] = useState<KnowledgeBase[]>([]);
-  const [loginError, setLoginError] = useState("");
-  const [registerError, setRegisterError] = useState("");
   const [notice, setNotice] = useState("");
   const [documentRows, setDocumentRows] = useState<UploadRow[]>([]);
   const [question, setQuestion] = useState("");
@@ -126,6 +120,12 @@ export default function App() {
     if (auth.status !== "authenticated" || availableKbs.length > 0 || chatSessions.length > 0) return;
     void restoreLogin(auth.accessToken ?? "", auth.user);
   }, [auth.status, auth.accessToken, auth.user, availableKbs.length, chatSessions.length]);
+
+  useEffect(() => {
+    if (auth.status === "unauthenticated") {
+      router.replace("/login");
+    }
+  }, [auth.status, router]);
 
   useEffect(() => {
     window.localStorage.setItem("active_chat_messages", JSON.stringify(messages.slice(-100)));
@@ -145,47 +145,12 @@ export default function App() {
     return map[view];
   }, [view]);
 
-  if (auth.status === "unauthenticated") {
-    if (authView === "register") {
-      return (
-        <RegisterPage
-          onAuthenticated={handleRegister}
-          onBackToLogin={() => {
-            setRegisterError("");
-            setAuthView("login");
-          }}
-          registerError={registerError}
-        />
-      );
-    }
-    return (
-      <LoginPage
-        onAuthenticated={handleLogin}
-        onGoRegister={() => {
-          setLoginError("");
-          setAuthView("register");
-        }}
-        role={role}
-        setRole={setRole}
-        loginError={loginError}
-      />
-    );
-  }
-
-  if (auth.status === "authenticated" && authView === "change-password") {
-    return (
-      <ChangePasswordPage
-        onPasswordChanged={() => {
-          setAuthView("login");
-          setView("chat");
-        }}
-        onLogout={handleLogout}
-      />
-    );
+  if (auth.status === "loading" || auth.status === "unauthenticated") {
+    return null;
   }
 
   return (
-    <AuthGate onUnauthenticated={() => setAuthView("login")} onMustChangePassword={() => setAuthView("change-password")}>
+    <AuthGate>
       <AppShell
         active={view}
         onNavigate={setView}
@@ -260,26 +225,6 @@ export default function App() {
     </AuthGate>
   );
 
-  async function handleLogin(username: string, password: string) {
-    setLoginError("");
-    try {
-      const data = await auth.login(username, password);
-      await restoreLogin(data.access_token, data.user);
-    } catch (error) {
-      setLoginError(toFriendlyError(error, "账号或密码错误，请确认后重试。"));
-    }
-  }
-
-  async function handleRegister(payload: RegisterRequest) {
-    setRegisterError("");
-    try {
-      const data = await auth.register(payload);
-      await restoreLogin(data.access_token, data.user);
-    } catch (error) {
-      setRegisterError(toFriendlyError(error, "注册失败，请确认用户名未重复、密码不少于 8 位，且已选择有效组织或邀请码。"));
-    }
-  }
-
   async function restoreLogin(token: string, userInfo: UserInfo) {
     try {
       void token;
@@ -299,29 +244,29 @@ export default function App() {
       setView("chat");
     } catch (error) {
       if (isNetworkError(error)) {
-        setLoginError(NETWORK_ERROR_MESSAGE);
+        setNotice(NETWORK_ERROR_MESSAGE);
         return;
       }
       handleLogout();
-      setLoginError("登录态已失效，请重新登录。");
+      setNotice("登录态已失效，请重新登录。");
     }
   }
 
   function handleUnauthorized() {
     handleLogout();
-    setLoginError("登录态已失效，请重新登录后再继续问答。");
+    setNotice("登录态已失效，请重新登录后再继续问答。");
   }
 
   async function handleLogout() {
     await auth.logout().catch(() => {});
     window.localStorage.removeItem("active_chat_messages");
-    setAuthView("login");
     setMessages([]);
     setCitations([]);
     setChatSessions([]);
     setActiveSessionId(null);
     setAvailableKbs([]);
     setSelectedKb(null);
+    router.replace("/login");
   }
 
   async function loadKnowledgeBases() {

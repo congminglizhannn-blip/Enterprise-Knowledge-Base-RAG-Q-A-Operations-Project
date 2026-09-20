@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./hooks";
 
 type AuthGateProps = {
@@ -10,9 +11,12 @@ type AuthGateProps = {
 };
 
 export function AuthGate({ children, onUnauthenticated, onMustChangePassword }: AuthGateProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const { status, mustChangePassword, retry, error } = useAuth();
   const onUnauthenticatedRef = useRef(onUnauthenticated);
   const onMustChangePasswordRef = useRef(onMustChangePassword);
+  const fallbackRedirectRef = useRef<string | null>(null);
 
   useEffect(() => {
     onUnauthenticatedRef.current = onUnauthenticated;
@@ -21,13 +25,32 @@ export function AuthGate({ children, onUnauthenticated, onMustChangePassword }: 
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      onUnauthenticatedRef.current?.();
+      if (onUnauthenticatedRef.current) {
+        fallbackRedirectRef.current = null;
+        onUnauthenticatedRef.current();
+        return;
+      }
+      const target = `/login?redirect=${encodeURIComponent(pathname)}`;
+      if (fallbackRedirectRef.current !== target) {
+        fallbackRedirectRef.current = target;
+        router.replace(target);
+      }
       return;
     }
     if (status === "authenticated" && mustChangePassword) {
-      onMustChangePasswordRef.current?.();
+      if (onMustChangePasswordRef.current) {
+        fallbackRedirectRef.current = null;
+        onMustChangePasswordRef.current();
+        return;
+      }
+      if (fallbackRedirectRef.current !== "/change-password") {
+        fallbackRedirectRef.current = "/change-password";
+        router.replace("/change-password");
+      }
+      return;
     }
-  }, [status, mustChangePassword]);
+    fallbackRedirectRef.current = null;
+  }, [status, mustChangePassword, pathname, router]);
 
   if (status === "loading") {
     return <div className="auth-state">正在恢复登录态...</div>;

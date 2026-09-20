@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   BookOpen,
   Database,
@@ -9,6 +10,7 @@ import {
   ShieldCheck,
   UploadCloud,
 } from "lucide-react";
+import { ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
 
 type SidebarProps<View extends string> = {
   active: View;
@@ -37,12 +39,25 @@ export function Sidebar<View extends string>({ active, onNavigate }: SidebarProp
         </div>
       </div>
       <nav>
-        {items.map(([key, Icon, label]) => (
-          <button className={active === key ? "active" : ""} key={key} onClick={() => onNavigate(key as View)}>
-            <Icon size={18} />
-            {label}
-          </button>
-        ))}
+        {items.map(([key, Icon, label]) => {
+          const isRouted = ROUTED_VIEWS.has(key as BusinessView);
+
+          if (isRouted) {
+            return (
+              <Link className={active === key ? "active" : ""} href={`/${key}`} key={key}>
+                <Icon size={18} />
+                {label}
+              </Link>
+            );
+          }
+
+          return (
+            <button className={active === key ? "active" : ""} key={key} onClick={() => onNavigate(key as View)}>
+              <Icon size={18} />
+              {label}
+            </button>
+          );
+        })}
       </nav>
       <div className="sidebar-note">
         <ShieldCheck size={18} />

@@ -51,6 +51,9 @@ export type BackendKnowledgeBase = {
 export type OrganizationInfo = {
   id: string;
   name: string;
+  description?: string | null;
+  is_archived?: boolean;
+  archived_at?: string | null;
   created_at: string;
 };
 
@@ -59,6 +62,8 @@ export type DepartmentInfo = {
   name: string;
   org_id: string;
   description?: string | null;
+  is_archived?: boolean;
+  archived_at?: string | null;
 };
 
 export type BackendDocument = {

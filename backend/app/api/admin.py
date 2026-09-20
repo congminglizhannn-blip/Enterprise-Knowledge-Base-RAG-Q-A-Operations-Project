@@ -12,6 +12,7 @@ from app.models.auth_session import AuthSession
 from app.models.department import Department
 from app.models.enums import UserRole
 from app.models.knowledge_base import KnowledgeBase
+from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.auth import ResetPasswordRequest, ResetPasswordResponse
 from app.services.audit import write_audit_log
@@ -42,7 +43,10 @@ def list_users(current_user: User = Depends(require_department_admin), db: Sessi
 
 @router.get("/departments")
 def list_departments(current_user: User = Depends(require_department_admin), db: Session = Depends(get_db)):
-    stmt = select(Department)
+    stmt = select(Department).join(Organization, Organization.id == Department.org_id).where(
+        Department.is_archived.is_(False),
+        Organization.is_archived.is_(False),
+    )
     if current_user.role != UserRole.SUPER_ADMIN:
         stmt = stmt.where(Department.org_id == current_user.org_id, Department.id == current_user.department_id)
     return db.scalars(stmt).all()
@@ -51,7 +55,10 @@ def list_departments(current_user: User = Depends(require_department_admin), db:
 @router.get("/stats")
 def get_admin_stats(current_user: User = Depends(require_department_admin), db: Session = Depends(get_db)):
     user_stmt = select(func.count(User.id))
-    department_stmt = select(func.count(Department.id))
+    department_stmt = select(func.count(Department.id)).join(Organization, Organization.id == Department.org_id).where(
+        Department.is_archived.is_(False),
+        Organization.is_archived.is_(False),
+    )
     kb_stmt = select(func.count(KnowledgeBase.id))
     token_stmt = select(func.coalesce(func.sum(ApiUsageLog.total_tokens), 0))
     today_start = datetime.combine(datetime.now(UTC).date(), time.min, tzinfo=UTC)

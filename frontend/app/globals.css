@@ -1631,6 +1631,17 @@ tbody tr:nth-child(even) {
   margin-bottom: 14px;
 }
 
+.filter-select {
+  min-width: 118px;
+  height: 44px;
+  border: 1px solid #cfe0f3;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #31435a;
+  padding: 0 12px;
+  font-weight: 700;
+}
+
 .link-cell {
   padding: 0;
   border: 0;
@@ -1643,6 +1654,15 @@ tbody tr:nth-child(even) {
 
 .link-cell:hover {
   text-decoration: underline;
+}
+
+tr.inactive-row {
+  background: #f6f8fb;
+}
+
+tr.inactive-row td:not(:last-child),
+tr.inactive-row .link-cell {
+  color: #8a97a8;
 }
 
 @media (max-width: 1280px) {

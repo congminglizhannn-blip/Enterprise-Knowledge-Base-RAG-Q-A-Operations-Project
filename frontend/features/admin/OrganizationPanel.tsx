@@ -1,9 +1,16 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Building2, Plus, RefreshCw } from "lucide-react";
-import { createOrganization, listOrganizations } from "@/features/documents/api";
+import { Building2, Plus, RefreshCw, Search } from "lucide-react";
+import {
+  archiveOrganization,
+  createOrganization,
+  listOrganizations,
+  restoreOrganization,
+  updateOrganization,
+} from "@/features/documents/api";
 import type { OrganizationInfo } from "@/features/documents/types";
+import { Modal } from "@/components/ui/Modal";
 import { ApiError } from "@/types/common";
 
 type OrganizationPanelProps = {
@@ -16,8 +23,24 @@ export function OrganizationPanel({ enabled, onChanged }: OrganizationPanelProps
   const [name, setName] = useState("");
   const [departmentName, setDepartmentName] = useState("");
   const [description, setDescription] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchField, setSearchField] = useState<"all" | "name" | "id" | "description">("all");
   const [notice, setNotice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<OrganizationInfo | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const filteredOrganizations = organizations.filter((org) => {
+    const keyword = searchKeyword.trim().toLowerCase();
+    const description = org.description || "";
+    const searchableValues: Record<typeof searchField, string> = {
+      all: [org.name, org.id, description].join(" "),
+      name: org.name,
+      id: org.id,
+      description,
+    };
+    return !keyword || searchableValues[searchField].toLowerCase().includes(keyword);
+  });
 
   useEffect(() => {
     if (enabled) void refresh();
@@ -38,10 +61,60 @@ export function OrganizationPanel({ enabled, onChanged }: OrganizationPanelProps
 
   async function refresh() {
     try {
-      setOrganizations(await listOrganizations());
+      setOrganizations(await listOrganizations({ includeArchived: true }));
       setNotice("组织列表已同步。");
     } catch (error) {
       setNotice(error instanceof ApiError ? error.message : "组织列表加载失败。");
+    }
+  }
+
+  function openEditOrg(org: OrganizationInfo) {
+    setEditingOrg(org);
+    setEditName(org.name);
+    setEditDescription(org.description || "");
+  }
+
+  async function submitEditOrg() {
+    if (!editingOrg) return;
+    const trimmedName = editName.trim();
+    if (!trimmedName) {
+      setNotice("请填写组织名称。");
+      return;
+    }
+    try {
+      await updateOrganization(editingOrg.id, {
+        name: trimmedName,
+        description: editDescription.trim() || undefined,
+      });
+      setEditingOrg(null);
+      await refresh();
+      await onChanged?.();
+      setNotice("组织信息已更新。");
+    } catch (error) {
+      setNotice(error instanceof ApiError ? error.message : "组织更新失败。");
+    }
+  }
+
+  async function handleArchiveOrg(org: OrganizationInfo) {
+    if (!window.confirm(`确认归档组织「${org.name}」？归档后注册、知识库和部门选择入口将不再展示该组织。`)) return;
+    try {
+      await archiveOrganization(org.id);
+      await refresh();
+      await onChanged?.();
+      setNotice("组织已归档。");
+    } catch (error) {
+      setNotice(error instanceof ApiError ? error.message : "组织归档失败。");
+    }
+  }
+
+  async function handleRestoreOrg(org: OrganizationInfo) {
+    try {
+      await restoreOrganization(org.id);
+      await refresh();
+      await onChanged?.();
+      setNotice("组织已恢复。");
+    } catch (error) {
+      setNotice(error instanceof ApiError ? error.message : "组织恢复失败。");
     }
   }
 
@@ -98,21 +171,65 @@ export function OrganizationPanel({ enabled, onChanged }: OrganizationPanelProps
         </form>
         <div className="admin-kb-list">
           <strong><Building2 size={16} />当前组织</strong>
-          {organizations.length === 0 ? (
-            <p className="muted-text">暂无组织。</p>
-          ) : (
-            <ul>
-              {organizations.map((org) => (
-                <li key={org.id}>
-                  <span>{org.name}</span>
-                  <small>{org.id}</small>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="admin-table-toolbar">
+            <select className="filter-select" value={searchField} onChange={(event) => setSearchField(event.target.value as typeof searchField)}>
+              <option value="all">全部字段</option>
+              <option value="name">组织名称</option>
+              <option value="id">组织ID</option>
+              <option value="description">组织说明</option>
+            </select>
+            <div className="search-box"><Search size={16} /><input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder="输入筛选关键词" /></div>
+            {(searchKeyword || searchField !== "all") && <button className="secondary-btn" type="button" onClick={() => {
+              setSearchKeyword("");
+              setSearchField("all");
+            }}>清除筛选</button>}
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>组织名称</th><th>说明</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody>
+                {filteredOrganizations.length === 0 ? (
+                  <tr><td colSpan={4}>暂无组织</td></tr>
+                ) : filteredOrganizations.map((org) => (
+                  <tr className={org.is_archived ? "inactive-row" : ""} key={org.id}>
+                    <td>
+                      <strong>{org.name}</strong>
+                      <small className="table-subtext">{org.id}</small>
+                    </td>
+                    <td>{org.description || "-"}</td>
+                    <td>{org.is_archived ? "已归档" : "启用"}</td>
+                    <td>
+                      <button className="table-action" disabled={org.is_archived} onClick={() => openEditOrg(org)}>编辑</button>
+                      {org.is_archived ? (
+                        <button className="table-action" onClick={() => handleRestoreOrg(org)}>恢复</button>
+                      ) : (
+                        <button className="table-action danger" onClick={() => handleArchiveOrg(org)}>归档</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
       {notice && <p className="muted-text">{notice}</p>}
+      {editingOrg && (
+        <Modal>
+          <header>
+            <div>
+              <span>组织配置</span>
+              <h3>编辑组织</h3>
+            </div>
+            <button className="icon-btn" onClick={() => setEditingOrg(null)}>×</button>
+          </header>
+          <div className="admin-kb-form">
+            <label><span>组织名称</span><input value={editName} onChange={(event) => setEditName(event.target.value)} /></label>
+            <label><span>组织说明</span><textarea value={editDescription} onChange={(event) => setEditDescription(event.target.value)} /></label>
+            <button className="primary-btn" onClick={submitEditOrg}>保存修改</button>
+          </div>
+        </Modal>
+      )}
     </section>
   );
 }

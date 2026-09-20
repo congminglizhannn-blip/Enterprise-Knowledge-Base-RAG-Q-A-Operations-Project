@@ -21,4 +21,6 @@ export type AdminDepartmentRow = {
   name: string;
   org_id: string;
   description?: string | null;
+  is_archived?: boolean;
+  archived_at?: string | null;
 };

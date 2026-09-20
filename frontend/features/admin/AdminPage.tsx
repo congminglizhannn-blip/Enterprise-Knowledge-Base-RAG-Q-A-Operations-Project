@@ -11,7 +11,6 @@ import {
   UsersRound,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
 import { Stat } from "@/components/ui/Stat";
 import { mapBackendRole } from "@/features/auth/utils";
@@ -20,6 +19,14 @@ import { toFriendlyError } from "@/lib/errors";
 import type { AuthenticatedFetch } from "@/types/common";
 import type { Role } from "@/features/auth/types";
 import type { AdminDepartmentRow, AdminStats, AdminUserRow } from "@/features/admin/types";
+import {
+  archiveDepartment,
+  createDepartment,
+  listOrganizations,
+  restoreDepartment,
+  updateDepartment,
+} from "@/features/documents/api";
+import type { OrganizationInfo } from "@/features/documents/types";
 import { InvitePage } from "./InvitePage";
 import { KnowledgeBaseConfigPanel } from "./KnowledgeBaseConfigPanel";
 import { OrganizationPanel } from "./OrganizationPanel";
@@ -40,21 +47,50 @@ export function AdminPage({
   const [stats, setStats] = useState<AdminStats>({ users: 0, departments: 0, knowledge_bases: 0, today_tokens: 0 });
   const [adminUsers, setAdminUsers] = useState<AdminUserRow[]>([]);
   const [departments, setDepartments] = useState<AdminDepartmentRow[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationInfo[]>([]);
   const [adminNotice, setAdminNotice] = useState("");
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [userSearchField, setUserSearchField] = useState<"all" | "username" | "role" | "department" | "status">("all");
+  const [departmentSearchKeyword, setDepartmentSearchKeyword] = useState("");
+  const [departmentSearchField, setDepartmentSearchField] = useState<"all" | "name" | "id" | "org" | "description">("all");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [editingUser, setEditingUser] = useState<AdminUserRow | null>(null);
   const [editRole, setEditRole] = useState("user");
   const [editDepartmentId, setEditDepartmentId] = useState("");
+  const [editingDepartment, setEditingDepartment] = useState<AdminDepartmentRow | "new" | null>(null);
+  const [departmentFormName, setDepartmentFormName] = useState("");
+  const [departmentFormOrgId, setDepartmentFormOrgId] = useState("");
+  const [departmentFormDescription, setDepartmentFormDescription] = useState("");
   const isSuperAdmin = role === "超级管理员";
+  const organizationNameById = new Map(organizations.map((org) => [org.id, org.name]));
   const filteredUsers = adminUsers.filter((user) => {
     const keyword = searchKeyword.trim().toLowerCase();
-    const matchesKeyword = !keyword || user.username.toLowerCase().includes(keyword);
+    const roleText = mapBackendRole(user.role);
+    const statusText = user.is_active ? (user.must_change_password ? "需改密" : "启用") : "停用";
+    const searchableValues: Record<typeof userSearchField, string> = {
+      all: [user.username, roleText, user.department_name || "", statusText].join(" "),
+      username: user.username,
+      role: roleText,
+      department: user.department_name || "",
+      status: statusText,
+    };
+    const matchesKeyword = !keyword || searchableValues[userSearchField].toLowerCase().includes(keyword);
     const matchesDepartment = !departmentFilter || user.department_id === departmentFilter;
     const matchesRole = !roleFilter || user.role === roleFilter;
     return matchesKeyword && matchesDepartment && matchesRole;
+  });
+  const filteredDepartments = departments.filter((department) => {
+    const keyword = departmentSearchKeyword.trim().toLowerCase();
+    const searchableValues: Record<typeof departmentSearchField, string> = {
+      all: [department.name, department.id, department.org_id, department.description || ""].join(" "),
+      name: department.name,
+      id: department.id,
+      org: department.org_id,
+      description: department.description || "",
+    };
+    return !keyword || searchableValues[departmentSearchField].toLowerCase().includes(keyword);
   });
 
   useEffect(() => {
@@ -67,10 +103,13 @@ export function AdminPage({
         authenticatedFetch("/api/admin/stats"),
         authenticatedFetch("/api/admin/users"),
       ]);
-      const departmentsResponse = await authenticatedFetch("/api/departments");
+      const departmentsResponse = await authenticatedFetch(isSuperAdmin ? "/api/departments?include_archived=true" : "/api/departments");
       setStats(await statsResponse.json());
       setAdminUsers(await usersResponse.json());
       setDepartments(await departmentsResponse.json());
+      if (isSuperAdmin) {
+        setOrganizations(await listOrganizations({ includeArchived: true }));
+      }
       setAdminNotice("");
     } catch (error) {
       setAdminNotice(toFriendlyError(error, "系统管理数据加载失败，请确认当前账号管理员权限。"));
@@ -113,11 +152,82 @@ export function AdminPage({
     }
   }
 
+  function openCreateDepartment() {
+    setEditingDepartment("new");
+    setDepartmentFormName("");
+    setDepartmentFormOrgId(organizations.find((org) => !org.is_archived)?.id || "");
+    setDepartmentFormDescription("");
+  }
+
+  function openEditDepartment(department: AdminDepartmentRow) {
+    setEditingDepartment(department);
+    setDepartmentFormName(department.name);
+    setDepartmentFormOrgId(department.org_id);
+    setDepartmentFormDescription(department.description || "");
+  }
+
+  async function submitDepartment() {
+    if (!editingDepartment) return;
+    try {
+      const payload = {
+        name: departmentFormName.trim(),
+        org_id: departmentFormOrgId,
+        description: departmentFormDescription.trim() || undefined,
+      };
+      if (!payload.name) {
+        setAdminNotice("请填写部门名称。");
+        return;
+      }
+      if (!payload.org_id) {
+        setAdminNotice("请选择所属组织。");
+        return;
+      }
+      if (editingDepartment === "new") {
+        await createDepartment(payload);
+        setAdminNotice("部门创建成功。");
+      } else {
+        await updateDepartment(editingDepartment.id, payload);
+        setAdminNotice("部门信息已更新。");
+      }
+      setEditingDepartment(null);
+      setAdminDataVersion((version) => version + 1);
+    } catch (error) {
+      setAdminNotice(toFriendlyError(error, editingDepartment === "new" ? "部门创建失败。" : "部门更新失败。"));
+    }
+  }
+
+  async function archiveDepartmentRow(department: AdminDepartmentRow) {
+    if (!window.confirm(`确认归档部门「${department.name}」？归档后业务入口将不可选择该部门。`)) return;
+    try {
+      await archiveDepartment(department.id);
+      setAdminDataVersion((version) => version + 1);
+      setAdminNotice("部门已归档。");
+    } catch (error) {
+      setAdminNotice(toFriendlyError(error, "部门归档失败。"));
+    }
+  }
+
+  async function restoreDepartmentRow(department: AdminDepartmentRow) {
+    try {
+      await restoreDepartment(department.id);
+      setAdminDataVersion((version) => version + 1);
+      setAdminNotice("部门已恢复。");
+    } catch (error) {
+      setAdminNotice(toFriendlyError(error, "部门恢复失败。"));
+    }
+  }
+
   function resetUserFilters() {
     setSearchKeyword("");
+    setUserSearchField("all");
     setDepartmentFilter("");
     setRoleFilter("");
     setActiveTab("users");
+  }
+
+  function resetDepartmentFilters() {
+    setDepartmentSearchKeyword("");
+    setDepartmentSearchField("all");
   }
 
   const permissionBoundary = (
@@ -168,8 +278,15 @@ export function AdminPage({
           {activeTab === "users" && (
             <>
               <div className="admin-table-toolbar">
-                <div className="search-box"><Search size={16} /><input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder="按用户名搜索" /></div>
-                {(departmentFilter || roleFilter || searchKeyword) && <button className="secondary-btn" onClick={resetUserFilters}>清除筛选</button>}
+                <select className="filter-select" value={userSearchField} onChange={(event) => setUserSearchField(event.target.value as typeof userSearchField)}>
+                  <option value="all">全部字段</option>
+                  <option value="username">用户名</option>
+                  <option value="role">角色</option>
+                  <option value="department">部门</option>
+                  <option value="status">状态</option>
+                </select>
+                <div className="search-box"><Search size={16} /><input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder="输入筛选关键词" /></div>
+                {(departmentFilter || roleFilter || searchKeyword || userSearchField !== "all") && <button className="secondary-btn" onClick={resetUserFilters}>清除筛选</button>}
               </div>
               <div className="table-wrap">
                 <table>
@@ -178,7 +295,7 @@ export function AdminPage({
                     {filteredUsers.length === 0 ? (
                       <tr><td colSpan={5}>暂无用户</td></tr>
                     ) : filteredUsers.map((user) => (
-                      <tr key={user.id}>
+                      <tr className={!user.is_active ? "inactive-row" : ""} key={user.id}>
                         <td>{user.username}</td>
                         <td><button className="link-cell" onClick={() => setRoleFilter(roleFilter === user.role ? "" : user.role)}>{mapBackendRole(user.role)}</button></td>
                         <td><button className="link-cell" onClick={() => setDepartmentFilter(departmentFilter === user.department_id ? "" : user.department_id)}>{user.department_name || "-"}</button></td>
@@ -195,12 +312,48 @@ export function AdminPage({
             </>
           )}
           {activeTab === "departments" && (
-            <DataTable
-              headers={["部门名称", "部门ID", "组织ID", "说明"]}
-              rows={departments.length > 0
-                ? departments.map((department) => [department.name, department.id, department.org_id, department.description || "-"])
-                : [["暂无部门", "-", "-", "-"]]}
-            />
+            <>
+              <div className="admin-table-toolbar">
+                <select className="filter-select" value={departmentSearchField} onChange={(event) => setDepartmentSearchField(event.target.value as typeof departmentSearchField)}>
+                  <option value="all">全部字段</option>
+                  <option value="name">部门名称</option>
+                  <option value="id">部门ID</option>
+                  <option value="org">组织ID</option>
+                  <option value="description">说明</option>
+                </select>
+                <div className="search-box"><Search size={16} /><input value={departmentSearchKeyword} onChange={(event) => setDepartmentSearchKeyword(event.target.value)} placeholder="输入筛选关键词" /></div>
+                {(departmentSearchKeyword || departmentSearchField !== "all") && <button className="secondary-btn" onClick={resetDepartmentFilters}>清除筛选</button>}
+                <button className="primary-btn small" disabled={!isSuperAdmin} onClick={openCreateDepartment}>新建部门</button>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>部门名称</th><th>组织</th><th>说明</th><th>状态</th><th>操作</th></tr></thead>
+                  <tbody>
+                    {filteredDepartments.length === 0 ? (
+                      <tr><td colSpan={5}>暂无部门</td></tr>
+                    ) : filteredDepartments.map((department) => (
+                      <tr className={department.is_archived ? "inactive-row" : ""} key={department.id}>
+                        <td>
+                          <strong>{department.name}</strong>
+                          <small className="table-subtext">{department.id}</small>
+                        </td>
+                        <td>{organizationNameById.get(department.org_id) || department.org_id}</td>
+                        <td>{department.description || "-"}</td>
+                        <td>{department.is_archived ? "已归档" : "启用"}</td>
+                        <td>
+                          <button className="table-action" disabled={!isSuperAdmin || department.is_archived} onClick={() => openEditDepartment(department)}>编辑</button>
+                          {department.is_archived ? (
+                            <button className="table-action" disabled={!isSuperAdmin} onClick={() => restoreDepartmentRow(department)}>恢复</button>
+                          ) : (
+                            <button className="table-action danger" disabled={!isSuperAdmin} onClick={() => archiveDepartmentRow(department)}>归档</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </Card>
         {permissionBoundary}
@@ -234,6 +387,29 @@ export function AdminPage({
               </select>
             </label>
             <button className="primary-btn" disabled={!editDepartmentId} onClick={submitUserRole}>保存修改</button>
+          </div>
+        </Modal>
+      )}
+      {editingDepartment && (
+        <Modal>
+          <header>
+            <div>
+              <span>部门配置</span>
+              <h3>{editingDepartment === "new" ? "新建部门" : "编辑部门"}</h3>
+            </div>
+            <button className="icon-btn" onClick={() => setEditingDepartment(null)}>×</button>
+          </header>
+          <div className="admin-kb-form">
+            <label><span>部门名称</span><input value={departmentFormName} onChange={(event) => setDepartmentFormName(event.target.value)} placeholder="例如：研发部" /></label>
+            <label>
+              <span>所属组织</span>
+              <select value={departmentFormOrgId} onChange={(event) => setDepartmentFormOrgId(event.target.value)}>
+                <option value="">请选择组织</option>
+                {organizations.filter((org) => !org.is_archived).map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
+              </select>
+            </label>
+            <label><span>部门说明</span><textarea value={departmentFormDescription} onChange={(event) => setDepartmentFormDescription(event.target.value)} placeholder="可选：说明部门职责或范围" /></label>
+            <button className="primary-btn" onClick={submitDepartment}>{editingDepartment === "new" ? "创建部门" : "保存修改"}</button>
           </div>
         </Modal>
       )}

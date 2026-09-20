@@ -19,8 +19,21 @@
 ## Admin
 
 - `GET /api/admin/users`：管理员查看用户列表；超级管理员查看本组织用户，部门管理员查看本部门用户。
-- `GET /api/admin/departments`：管理员查看部门列表。
+- `GET /api/admin/departments`：管理员查看未归档部门列表。
 - `POST /api/admin/users/{user_id}/reset-password`：超级管理员重置本组织用户密码，需携带 `X-CSRF-Token`；接口会撤销该用户所有旧 session，并标记 `must_change_password=true`。
+
+## Organizations And Departments
+
+- `GET /api/organizations?include_archived=true|false`：列出组织；默认只返回未归档组织，超级管理员管理页可携带 `include_archived=true` 查看归档组织。
+- `POST /api/organizations`：超级管理员创建组织并自动创建默认部门，需携带 `X-CSRF-Token`；请求体 `{ "name": "组织名", "description": "说明", "department_name": "默认部门名" }`。
+- `PUT /api/organizations/{org_id}`：超级管理员编辑未归档组织名称和说明，需携带 `X-CSRF-Token`；同名返回 `409`。
+- `PATCH /api/organizations/{org_id}/archive`：超级管理员归档组织，需携带 `X-CSRF-Token`；组织下仍有启用用户时返回 `409`。
+- `PATCH /api/organizations/{org_id}/restore`：超级管理员恢复组织，需携带 `X-CSRF-Token`。
+- `GET /api/departments?org_id=...&include_archived=true|false`：按权限列出部门；默认只返回未归档部门且所属组织未归档。
+- `POST /api/departments`：超级管理员创建部门，需携带 `X-CSRF-Token`；请求体 `{ "org_id": "uuid", "name": "部门名", "description": "说明" }`。
+- `PUT /api/departments/{department_id}`：管理员编辑未归档部门，需携带 `X-CSRF-Token`；超级管理员可跨组织，部门管理员仅限自己部门。
+- `PATCH /api/departments/{department_id}/archive`：管理员归档部门，需携带 `X-CSRF-Token`；部门下仍有启用用户，或该组织只剩最后一个可用部门时返回 `409`。
+- `PATCH /api/departments/{department_id}/restore`：管理员恢复部门，需携带 `X-CSRF-Token`；所属组织已归档时需先恢复组织。
 
 ## Knowledge Bases
 

@@ -5,8 +5,9 @@ export function listKnowledgeBases() {
   return apiJson<BackendKnowledgeBase[]>("/api/kbs");
 }
 
-export function listOrganizations() {
-  return apiJson<OrganizationInfo[]>("/api/organizations");
+export function listOrganizations(options?: { includeArchived?: boolean }) {
+  const query = options?.includeArchived ? "?include_archived=true" : "";
+  return apiJson<OrganizationInfo[]>(`/api/organizations${query}`);
 }
 
 export function createOrganization(payload: { name: string; description?: string; department_name?: string }) {
@@ -17,9 +18,52 @@ export function createOrganization(payload: { name: string; description?: string
   });
 }
 
-export function listDepartments(orgId?: string) {
-  const query = orgId ? `?org_id=${encodeURIComponent(orgId)}` : "";
+export function updateOrganization(organizationId: string, payload: { name: string; description?: string }) {
+  return apiJson<OrganizationInfo>(`/api/organizations/${organizationId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function archiveOrganization(organizationId: string) {
+  return apiJson<OrganizationInfo>(`/api/organizations/${organizationId}/archive`, { method: "PATCH" });
+}
+
+export function restoreOrganization(organizationId: string) {
+  return apiJson<OrganizationInfo>(`/api/organizations/${organizationId}/restore`, { method: "PATCH" });
+}
+
+export function listDepartments(orgId?: string, options?: { includeArchived?: boolean }) {
+  const params = new URLSearchParams();
+  if (orgId) params.set("org_id", orgId);
+  if (options?.includeArchived) params.set("include_archived", "true");
+  const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<DepartmentInfo[]>(`/api/departments${query}`);
+}
+
+export function createDepartment(payload: { org_id?: string; name: string; description?: string }) {
+  return apiJson<DepartmentInfo>("/api/departments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateDepartment(departmentId: string, payload: { org_id?: string; name: string; description?: string }) {
+  return apiJson<DepartmentInfo>(`/api/departments/${departmentId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function archiveDepartment(departmentId: string) {
+  return apiJson<DepartmentInfo>(`/api/departments/${departmentId}/archive`, { method: "PATCH" });
+}
+
+export function restoreDepartment(departmentId: string) {
+  return apiJson<DepartmentInfo>(`/api/departments/${departmentId}/restore`, { method: "PATCH" });
 }
 
 export function createKnowledgeBase(payload: { org_id?: string; scope?: "global" | "organization" | "department"; target_id?: string | null; name: string; description: string }) {

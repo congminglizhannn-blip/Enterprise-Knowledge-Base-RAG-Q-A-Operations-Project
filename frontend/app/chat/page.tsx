@@ -41,7 +41,7 @@ function withKbStats(kbs: KnowledgeBase[], rows: UploadRow[]) {
 function ChatPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const kbId = searchParams.get("kb");
+  const kbId = searchParams.get("kb")?.trim().replace(/^<|>$/g, "") || null;
   const auth = useAuth();
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
   const [availableKbs, setAvailableKbs] = useState<KnowledgeBase[]>([]);

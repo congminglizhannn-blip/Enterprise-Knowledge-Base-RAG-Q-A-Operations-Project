@@ -7,7 +7,6 @@ import {
   BookOpen,
   Building2,
   CheckCircle2,
-  ChevronDown,
   Clock3,
   FileText,
   GitBranch,
@@ -37,6 +36,7 @@ import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
 import { ChatPage } from "@/features/chat/ChatPage";
+import { HistoryPage } from "@/features/chat/HistoryPage";
 import type { ChatMessage, ChatSessionSummary, CitationRow } from "@/features/chat/types";
 import { IngestionPage } from "@/features/documents/IngestionPage";
 import { KnowledgePage } from "@/features/documents/KnowledgePage";
@@ -568,25 +568,6 @@ function FlowDiagram({ title, summary, steps }: { title: string; summary: string
           </React.Fragment>
         ))}
       </div>
-    </section>
-  );
-}
-
-function HistoryPage({ sessions, messages, setNotice }: { sessions: ChatSessionSummary[]; messages: ChatMessage[]; setNotice: (notice: string) => void }) {
-  return (
-    <section className="content-stack">
-      <div className="section-toolbar">
-        <div className="search-box"><Search size={18} /><input placeholder="按问题、用户、知识库搜索" /></div>
-        <button className="secondary-btn" onClick={() => setNotice("当前 MVP 仅展示登录用户所属部门数据，后续会接入多部门筛选。")}><ChevronDown size={16} />产品运营部</button>
-      </div>
-      <Card title="问答历史与审计">
-        <DataTable
-          headers={["会话标题", "知识库ID", "更新时间", "当前载入消息数"]}
-          rows={sessions.length > 0
-            ? sessions.map((session) => [session.title, session.knowledge_base_id, formatTime(session.updated_at), String(messages.length)])
-            : [["暂无历史会话", "-", "-", "0"]]}
-        />
-      </Card>
     </section>
   );
 }

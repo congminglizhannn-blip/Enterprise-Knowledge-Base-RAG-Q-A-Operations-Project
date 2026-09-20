@@ -15,3 +15,7 @@ __pycache__/
 uploads/
 model_cache/
 *.log
+
+backup.sql
+*/backup.sql
+rag_db.dump

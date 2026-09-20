@@ -12,7 +12,7 @@ export const BUSINESS_VIEWS: readonly BusinessView[] = [
   "account",
 ];
 
-export const ROUTED_VIEWS: ReadonlySet<BusinessView> = new Set();
+export const ROUTED_VIEWS: ReadonlySet<BusinessView> = new Set(["chat"]);
 export const STATIC_KNOWN_ROUTES: readonly string[] = ["/", "/login", "/register", "/change-password"];
 
 export const KNOWN_ROUTES: readonly string[] = [

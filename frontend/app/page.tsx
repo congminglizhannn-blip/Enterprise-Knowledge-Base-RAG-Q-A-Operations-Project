@@ -24,9 +24,8 @@ import { AdminPage } from "@/features/admin/AdminPage";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
-import { ChatPage } from "@/features/chat/ChatPage";
 import { HistoryPage } from "@/features/chat/HistoryPage";
-import type { ChatMessage, ChatSessionSummary, CitationRow } from "@/features/chat/types";
+import type { ChatMessage, ChatSessionSummary } from "@/features/chat/types";
 import { IngestionPage } from "@/features/documents/IngestionPage";
 import { KnowledgePage } from "@/features/documents/KnowledgePage";
 import type { BackendDocument, BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
@@ -115,17 +114,14 @@ function AppContent() {
   const searchParams = useSearchParams();
   const urlView = searchParams.get("view");
   const auth = useAuth();
-  const [view, setView] = useState<View>("chat");
+  const [view, setView] = useState<View>("dashboard");
   const [role, setRole] = useState<Role>("部门管理员");
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
   const [availableKbs, setAvailableKbs] = useState<KnowledgeBase[]>([]);
   const [notice, setNotice] = useState("");
   const [documentRows, setDocumentRows] = useState<UploadRow[]>([]);
-  const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [citations, setCitations] = useState<CitationRow[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (auth.status !== "authenticated" || availableKbs.length > 0 || chatSessions.length > 0) return;
@@ -134,7 +130,7 @@ function AppContent() {
       if (urlView && BUSINESS_VIEWS.includes(candidate) && !ROUTED_VIEWS.has(candidate)) {
         setView(candidate as View);
       } else {
-        setView("chat");
+        setView("dashboard");
       }
     });
   }, [auth.status, auth.accessToken, auth.user, availableKbs.length, chatSessions.length, urlView]);
@@ -196,6 +192,7 @@ function AppContent() {
         {view === "dashboard" && (
           <Dashboard
             setView={setView}
+            onEnterChat={() => router.push("/chat")}
             kbs={availableKbs}
             documentRows={documentRows}
             chatSessions={chatSessions}
@@ -206,7 +203,7 @@ function AppContent() {
             setSelectedKb={setSelectedKb}
             onEnterChat={(kb) => {
               setSelectedKb(kb);
-              setView("chat");
+              router.push(`/chat?kb=${encodeURIComponent(kb.id)}`);
             }}
             onEnterIngestion={(kb) => {
               setSelectedKb(kb);
@@ -227,25 +224,6 @@ function AppContent() {
             documentRows={documentRows}
             setDocumentRows={setDocumentRows}
             refreshDocuments={refreshDocuments}
-          />
-        )}
-        {view === "chat" && (
-          <ChatPage
-            selectedKb={selectedKb}
-            setSelectedKb={setSelectedKb}
-            availableKbs={availableKbs}
-            question={question}
-            setQuestion={setQuestion}
-            messages={messages}
-            setMessages={setMessages}
-            citations={citations}
-            setCitations={setCitations}
-            activeSessionId={activeSessionId}
-            setActiveSessionId={setActiveSessionId}
-            chatSessions={chatSessions}
-            refreshSessions={refreshSessions}
-            onUnauthorized={handleUnauthorized}
-            authenticatedFetch={authenticatedFetch}
           />
         )}
         {view === "workflow" && <WorkflowPage />}
@@ -291,9 +269,7 @@ function AppContent() {
     await auth.logout().catch(() => {});
     window.localStorage.removeItem("active_chat_messages");
     setMessages([]);
-    setCitations([]);
     setChatSessions([]);
-    setActiveSessionId(null);
     setAvailableKbs([]);
     setSelectedKb(null);
     router.replace("/login");
@@ -328,11 +304,6 @@ function AppContent() {
     return response.json();
   }
 
-  async function refreshSessions() {
-    if (auth.status !== "authenticated") return;
-    setChatSessions(await loadSessions());
-  }
-
   async function refreshDocuments(nextKbs?: KnowledgeBase[]) {
     if (auth.status !== "authenticated") return;
     try {
@@ -364,11 +335,13 @@ function AppContent() {
 
 function Dashboard({
   setView,
+  onEnterChat,
   kbs,
   documentRows,
   chatSessions,
 }: {
   setView: (view: View) => void;
+  onEnterChat: () => void;
   kbs: KnowledgeBase[];
   documentRows: UploadRow[];
   chatSessions: ChatSessionSummary[];
@@ -400,7 +373,7 @@ function Dashboard({
         <Card title="快速入口">
           <div className="quick-actions">
             <button onClick={() => setView("ingestion")}><UploadCloud size={18} />上传文档</button>
-            <button onClick={() => setView("chat")}><MessageSquareText size={18} />开始问答</button>
+            <button onClick={onEnterChat}><MessageSquareText size={18} />开始问答</button>
             <button onClick={() => setView("workflow")}><GitBranch size={18} />查看流程</button>
             <button onClick={() => setView("history")}><History size={18} />查看审计</button>
           </div>

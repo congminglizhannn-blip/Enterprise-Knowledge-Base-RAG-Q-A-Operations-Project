@@ -129,10 +129,18 @@ function AppContent() {
 
   useEffect(() => {
     if (auth.status !== "authenticated" || availableKbs.length > 0 || chatSessions.length > 0) return;
-    void restoreLogin(auth.accessToken ?? "", auth.user);
-  }, [auth.status, auth.accessToken, auth.user, availableKbs.length, chatSessions.length]);
+    void restoreLogin(auth.accessToken ?? "", auth.user).then(() => {
+      const candidate = urlView as BusinessView;
+      if (urlView && BUSINESS_VIEWS.includes(candidate) && !ROUTED_VIEWS.has(candidate)) {
+        setView(candidate as View);
+      } else {
+        setView("chat");
+      }
+    });
+  }, [auth.status, auth.accessToken, auth.user, availableKbs.length, chatSessions.length, urlView]);
 
   useEffect(() => {
+    if (auth.status !== "authenticated") return;
     if (!urlView) return;
     const candidate = urlView as BusinessView;
     if (ROUTED_VIEWS.has(candidate)) {
@@ -142,7 +150,7 @@ function AppContent() {
     if (BUSINESS_VIEWS.includes(candidate)) {
       setView(candidate as View);
     }
-  }, [urlView, router]);
+  }, [urlView, auth.status, router]);
 
   useEffect(() => {
     if (auth.status === "unauthenticated") {
@@ -264,7 +272,6 @@ function AppContent() {
       setChatSessions(sessions);
       const cachedMessages = window.localStorage.getItem("active_chat_messages");
       if (cachedMessages) setMessages(JSON.parse(cachedMessages));
-      setView("chat");
     } catch (error) {
       if (isNetworkError(error)) {
         setNotice(NETWORK_ERROR_MESSAGE);

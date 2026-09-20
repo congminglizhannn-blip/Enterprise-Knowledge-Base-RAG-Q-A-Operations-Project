@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Activity,
   BookOpen,
@@ -17,6 +17,7 @@ import { SessionsPanel } from "@/features/auth/SessionsPanel";
 import { useAuth } from "@/features/auth/hooks";
 import { apiFetch } from "@/lib/apiClient";
 import { NETWORK_ERROR_MESSAGE, isNetworkError, toFriendlyError } from "@/lib/errors";
+import { BUSINESS_VIEWS, ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
 import { ApiError, type AuthenticatedFetch } from "@/types/common";
 import type { UserInfo } from "@/features/auth/types";
 import { AdminPage } from "@/features/admin/AdminPage";
@@ -102,7 +103,17 @@ function withKbStats(kbs: KnowledgeBase[], rows: UploadRow[]) {
 }
 
 export default function App() {
+  return (
+    <Suspense fallback={null}>
+      <AppContent />
+    </Suspense>
+  );
+}
+
+function AppContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlView = searchParams.get("view");
   const auth = useAuth();
   const [view, setView] = useState<View>("chat");
   const [role, setRole] = useState<Role>("部门管理员");
@@ -120,6 +131,18 @@ export default function App() {
     if (auth.status !== "authenticated" || availableKbs.length > 0 || chatSessions.length > 0) return;
     void restoreLogin(auth.accessToken ?? "", auth.user);
   }, [auth.status, auth.accessToken, auth.user, availableKbs.length, chatSessions.length]);
+
+  useEffect(() => {
+    if (!urlView) return;
+    const candidate = urlView as BusinessView;
+    if (ROUTED_VIEWS.has(candidate)) {
+      router.replace(`/${urlView}`);
+      return;
+    }
+    if (BUSINESS_VIEWS.includes(candidate)) {
+      setView(candidate as View);
+    }
+  }, [urlView, router]);
 
   useEffect(() => {
     if (auth.status === "unauthenticated") {

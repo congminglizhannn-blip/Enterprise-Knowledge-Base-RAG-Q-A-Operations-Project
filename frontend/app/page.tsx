@@ -29,7 +29,6 @@ import { KnowledgePage } from "@/features/documents/KnowledgePage";
 import type { BackendDocument, BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
 import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
-import { WorkflowPage } from "@/features/rag/WorkflowPage";
 
 type View = "dashboard" | "knowledge" | "ingestion" | "chat" | "workflow" | "history" | "admin" | "account";
 
@@ -230,7 +229,6 @@ function AppContent() {
             canDeleteDocuments={role === "超级管理员" || role === "部门管理员"}
           />
         )}
-        {view === "workflow" && <WorkflowPage />}
         {view === "history" && <HistoryPage sessions={chatSessions} messages={messages} setNotice={setNotice} />}
         {view === "admin" && <AdminPage role={role} refreshDocuments={refreshDocuments} authenticatedFetch={authenticatedFetch} />}
       </AppShell>

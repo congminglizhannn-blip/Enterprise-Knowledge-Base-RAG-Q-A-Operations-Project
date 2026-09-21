@@ -188,6 +188,10 @@ function AppContent() {
     return null;
   }
 
+  if (auth.status === "authenticated" && (!urlView || ROUTED_VIEWS.has(urlView as BusinessView))) {
+    return null;
+  }
+
   return (
     <AuthGate>
       <AppShell

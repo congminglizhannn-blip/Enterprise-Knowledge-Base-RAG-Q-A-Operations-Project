@@ -23,7 +23,6 @@ import { AdminPage } from "@/features/admin/AdminPage";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
-import { HistoryPage } from "@/features/chat/HistoryPage";
 import type { ChatMessage, ChatSessionSummary } from "@/features/chat/types";
 import { KnowledgePage } from "@/features/documents/KnowledgePage";
 import type { BackendDocument, BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
@@ -229,7 +228,6 @@ function AppContent() {
             canDeleteDocuments={role === "超级管理员" || role === "部门管理员"}
           />
         )}
-        {view === "history" && <HistoryPage sessions={chatSessions} messages={messages} setNotice={setNotice} />}
         {view === "admin" && <AdminPage role={role} refreshDocuments={refreshDocuments} authenticatedFetch={authenticatedFetch} />}
       </AppShell>
     </AuthGate>

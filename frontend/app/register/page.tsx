@@ -17,7 +17,7 @@ export default function RegisterRoute() {
       if (auth.mustChangePassword) {
         router.replace("/change-password");
       } else {
-        router.replace("/");
+        router.replace("/chat");
       }
     }
   }, [auth.status, auth.mustChangePassword, router]);

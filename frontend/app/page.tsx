@@ -136,6 +136,12 @@ function AppContent() {
   }, [auth.status, auth.accessToken, auth.user, availableKbs.length, chatSessions.length, urlView]);
 
   useEffect(() => {
+    if (auth.status === "authenticated" && !urlView) {
+      router.replace("/chat");
+    }
+  }, [auth.status, urlView, router]);
+
+  useEffect(() => {
     if (auth.status !== "authenticated") return;
     if (!urlView) return;
     const candidate = urlView as BusinessView;

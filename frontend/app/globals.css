@@ -246,7 +246,8 @@ button:disabled {
   gap: 8px;
 }
 
-.sidebar nav button {
+.sidebar nav button,
+.sidebar nav a {
   height: 44px;
   display: flex;
   align-items: center;
@@ -257,9 +258,11 @@ button:disabled {
   color: #657386;
   padding: 0 16px;
   font-weight: 700;
+  text-decoration: none;
 }
 
-.sidebar nav button.active {
+.sidebar nav button.active,
+.sidebar nav a.active {
   color: #2f73b7;
   background: #edf7ff;
   border-color: #cfe6ff;

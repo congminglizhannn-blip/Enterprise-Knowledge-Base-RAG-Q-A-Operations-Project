@@ -23,7 +23,7 @@ export default function ChangePasswordRoute() {
   return (
     <ChangePasswordPage
       onLogout={handleLogout}
-      onPasswordChanged={() => router.replace("/")}
+      onPasswordChanged={() => router.replace("/chat")}
     />
   );
 }

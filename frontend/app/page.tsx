@@ -129,11 +129,17 @@ function AppContent() {
       const candidate = urlView as BusinessView;
       if (urlView && BUSINESS_VIEWS.includes(candidate) && !ROUTED_VIEWS.has(candidate)) {
         setView(candidate as View);
-      } else {
-        setView("dashboard");
+        return;
       }
+
+      if (!urlView) {
+        router.replace("/chat");
+        return;
+      }
+
+      setView("dashboard");
     });
-  }, [auth.status, auth.accessToken, auth.user, availableKbs.length, chatSessions.length, urlView]);
+  }, [auth.status, auth.accessToken, auth.user, availableKbs.length, chatSessions.length, urlView, router]);
 
   useEffect(() => {
     if (auth.status === "authenticated" && !urlView) {

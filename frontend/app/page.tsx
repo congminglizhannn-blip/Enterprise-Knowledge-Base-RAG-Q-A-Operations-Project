@@ -13,7 +13,6 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { AuthGate } from "@/features/auth/AuthGate";
-import { SessionsPanel } from "@/features/auth/SessionsPanel";
 import { useAuth } from "@/features/auth/hooks";
 import { apiFetch } from "@/lib/apiClient";
 import { NETWORK_ERROR_MESSAGE, isNetworkError, toFriendlyError } from "@/lib/errors";
@@ -234,7 +233,6 @@ function AppContent() {
         {view === "workflow" && <WorkflowPage />}
         {view === "history" && <HistoryPage sessions={chatSessions} messages={messages} setNotice={setNotice} />}
         {view === "admin" && <AdminPage role={role} refreshDocuments={refreshDocuments} authenticatedFetch={authenticatedFetch} />}
-        {view === "account" && <SessionsPanel />}
       </AppShell>
     </AuthGate>
   );

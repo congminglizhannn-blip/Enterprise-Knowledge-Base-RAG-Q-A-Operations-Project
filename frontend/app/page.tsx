@@ -133,6 +133,11 @@ function AppContent() {
         return;
       }
 
+      if (ROUTED_VIEWS.has(candidate)) {
+        router.replace(`/${urlView}`);
+        return;
+      }
+
       setView("dashboard");
     });
   }, [auth.status, auth.accessToken, auth.user, availableKbs.length, chatSessions.length, urlView, router]);

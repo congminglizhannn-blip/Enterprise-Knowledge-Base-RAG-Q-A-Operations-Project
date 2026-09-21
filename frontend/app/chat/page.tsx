@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthGate } from "@/features/auth/AuthGate";
 import { useAuth } from "@/features/auth/hooks";
+import type { Role } from "@/features/auth/types";
+import { mapBackendRole } from "@/features/auth/utils";
 import { ChatPage } from "@/features/chat/ChatPage";
 import type { ChatMessage, ChatSessionSummary, CitationRow } from "@/features/chat/types";
 import type { BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
@@ -43,6 +45,7 @@ function ChatPageContent() {
   const searchParams = useSearchParams();
   const kbId = searchParams.get("kb")?.trim().replace(/^<|>$/g, "") || null;
   const auth = useAuth();
+  const role: Role = auth.user ? mapBackendRole(auth.user.role) : "普通用户";
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
   const [availableKbs, setAvailableKbs] = useState<KnowledgeBase[]>([]);
   const [question, setQuestion] = useState("");
@@ -116,7 +119,7 @@ function ChatPageContent() {
         active="chat"
         onNavigate={handleNavigate}
         title="知识库问答"
-        role={auth.user?.role ?? "当前用户"}
+        role={role}
         orgName={auth.org?.name ?? "未识别组织"}
         departmentName={auth.department?.name ?? "未识别部门"}
         userName={auth.user?.full_name || auth.user?.username || "当前用户"}

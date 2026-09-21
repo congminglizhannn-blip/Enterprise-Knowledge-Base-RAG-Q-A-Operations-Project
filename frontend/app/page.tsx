@@ -2,16 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Activity,
-  BookOpen,
-  FileText,
-  GitBranch,
-  History,
-  Layers3,
-  MessageSquareText,
-  UploadCloud,
-} from "lucide-react";
 import { AuthGate } from "@/features/auth/AuthGate";
 import { useAuth } from "@/features/auth/hooks";
 import { apiFetch } from "@/lib/apiClient";
@@ -21,8 +11,6 @@ import { ApiError, type AuthenticatedFetch } from "@/types/common";
 import type { UserInfo } from "@/features/auth/types";
 import { AdminPage } from "@/features/admin/AdminPage";
 import { AppShell } from "@/components/layout/AppShell";
-import { Card } from "@/components/ui/Card";
-import { Stat } from "@/components/ui/Stat";
 import type { ChatMessage, ChatSessionSummary } from "@/features/chat/types";
 import { KnowledgePage } from "@/features/documents/KnowledgePage";
 import type { BackendDocument, BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
@@ -206,16 +194,6 @@ function AppContent() {
         onLogout={handleLogout}
         notice={notice}
       >
-        {view === "dashboard" && (
-          <Dashboard
-            setView={setView}
-            onEnterChat={() => router.push("/chat")}
-            onEnterIngestion={() => router.push("/ingestion")}
-            kbs={availableKbs}
-            documentRows={documentRows}
-            chatSessions={chatSessions}
-          />
-        )}
         {view === "knowledge" && (
           <KnowledgePage
             setSelectedKb={setSelectedKb}
@@ -335,56 +313,4 @@ function AppContent() {
       throw error;
     }
   }
-}
-
-function Dashboard({
-  setView,
-  onEnterChat,
-  onEnterIngestion,
-  kbs,
-  documentRows,
-  chatSessions,
-}: {
-  setView: (view: View) => void;
-  onEnterChat: () => void;
-  onEnterIngestion: () => void;
-  kbs: KnowledgeBase[];
-  documentRows: UploadRow[];
-  chatSessions: ChatSessionSummary[];
-}) {
-  const todayKey = new Date().toDateString();
-  const todaySessionCount = chatSessions.filter((session) => new Date(session.updated_at).toDateString() === todayKey).length;
-  const totalChunks = documentRows.reduce((sum, row) => sum + row.chunks, 0);
-
-  return (
-    <section className="page-grid">
-      <div className="stats-row">
-        <Stat icon={BookOpen} label="知识库" value={String(kbs.length)} />
-        <Stat icon={FileText} label="文档总数" value={String(documentRows.length)} />
-        <Stat icon={Layers3} label="Chunk 数" value={String(totalChunks)} />
-        <Stat icon={Activity} label="今日问答" value={String(todaySessionCount)} />
-      </div>
-      <div className="dashboard-flow-stack">
-        <Card title="MVP 核心链路">
-          <div className="timeline">
-            {["上传文档", "解析并分块", "向量入库", "权限内检索", "SSE 流式回答"].map((item, index) => (
-              <div className="timeline-item" key={item}>
-                <span>{index + 1}</span>
-                <strong>{item}</strong>
-                <small>{index < 3 ? "入库流程" : "问答流程"}</small>
-              </div>
-            ))}
-          </div>
-        </Card>
-        <Card title="快速入口">
-          <div className="quick-actions">
-            <button onClick={onEnterIngestion}><UploadCloud size={18} />上传文档</button>
-            <button onClick={onEnterChat}><MessageSquareText size={18} />开始问答</button>
-            <button onClick={() => setView("workflow")}><GitBranch size={18} />查看流程</button>
-            <button onClick={() => setView("history")}><History size={18} />查看审计</button>
-          </div>
-        </Card>
-      </div>
-    </section>
-  );
 }

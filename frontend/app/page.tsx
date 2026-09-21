@@ -26,7 +26,6 @@ import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { HistoryPage } from "@/features/chat/HistoryPage";
 import type { ChatMessage, ChatSessionSummary } from "@/features/chat/types";
-import { IngestionPage } from "@/features/documents/IngestionPage";
 import { KnowledgePage } from "@/features/documents/KnowledgePage";
 import type { BackendDocument, BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
 import type { Role } from "@/features/auth/types";
@@ -209,6 +208,7 @@ function AppContent() {
           <Dashboard
             setView={setView}
             onEnterChat={() => router.push("/chat")}
+            onEnterIngestion={() => router.push("/ingestion")}
             kbs={availableKbs}
             documentRows={documentRows}
             chatSessions={chatSessions}
@@ -222,24 +222,13 @@ function AppContent() {
               router.push(`/chat?kb=${encodeURIComponent(kb.id)}`);
             }}
             onEnterIngestion={(kb) => {
-              setSelectedKb(kb);
-              setView("ingestion");
+              router.push(`/ingestion?kb=${encodeURIComponent(kb.id)}`);
             }}
             kbs={availableKbs}
             documentRows={documentRows}
             refreshDocuments={refreshDocuments}
             setNotice={setNotice}
             canDeleteDocuments={role === "超级管理员" || role === "部门管理员"}
-          />
-        )}
-        {view === "ingestion" && (
-          <IngestionPage
-            selectedKb={selectedKb}
-            availableKbs={availableKbs}
-            role={role}
-            documentRows={documentRows}
-            setDocumentRows={setDocumentRows}
-            refreshDocuments={refreshDocuments}
           />
         )}
         {view === "workflow" && <WorkflowPage />}
@@ -352,12 +341,14 @@ function AppContent() {
 function Dashboard({
   setView,
   onEnterChat,
+  onEnterIngestion,
   kbs,
   documentRows,
   chatSessions,
 }: {
   setView: (view: View) => void;
   onEnterChat: () => void;
+  onEnterIngestion: () => void;
   kbs: KnowledgeBase[];
   documentRows: UploadRow[];
   chatSessions: ChatSessionSummary[];
@@ -388,7 +379,7 @@ function Dashboard({
         </Card>
         <Card title="快速入口">
           <div className="quick-actions">
-            <button onClick={() => setView("ingestion")}><UploadCloud size={18} />上传文档</button>
+            <button onClick={onEnterIngestion}><UploadCloud size={18} />上传文档</button>
             <button onClick={onEnterChat}><MessageSquareText size={18} />开始问答</button>
             <button onClick={() => setView("workflow")}><GitBranch size={18} />查看流程</button>
             <button onClick={() => setView("history")}><History size={18} />查看审计</button>

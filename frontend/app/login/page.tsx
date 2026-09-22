@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Spinner } from "@/components/ui/Spinner";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { useAuth } from "@/features/auth/hooks";
 import { toFriendlyError } from "@/lib/errors";
@@ -30,6 +31,18 @@ export default function LoginRoute() {
     } catch (error) {
       setLoginError(toFriendlyError(error, "账号或密码错误，请确认后重试。"));
     }
+  }
+
+  if (auth.status === "loading") {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (auth.status === "authenticated") {
+    return null;
   }
 
   return (

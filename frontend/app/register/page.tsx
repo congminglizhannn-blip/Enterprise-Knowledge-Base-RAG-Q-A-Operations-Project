@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Spinner } from "@/components/ui/Spinner";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { useAuth } from "@/features/auth/hooks";
 import { toFriendlyError } from "@/lib/errors";
@@ -34,6 +35,18 @@ export default function RegisterRoute() {
         ),
       );
     }
+  }
+
+  if (auth.status === "loading") {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (auth.status === "authenticated") {
+    return null;
   }
 
   return (

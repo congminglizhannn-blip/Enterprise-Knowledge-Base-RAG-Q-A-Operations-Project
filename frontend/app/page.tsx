@@ -11,7 +11,6 @@ import { ApiError, type AuthenticatedFetch } from "@/types/common";
 import type { UserInfo } from "@/features/auth/types";
 import { AppShell } from "@/components/layout/AppShell";
 import type { ChatMessage, ChatSessionSummary } from "@/features/chat/types";
-import { KnowledgePage } from "@/features/documents/KnowledgePage";
 import type { BackendDocument, BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
 import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
@@ -193,23 +192,7 @@ function AppContent() {
         onLogout={handleLogout}
         notice={notice}
       >
-        {view === "knowledge" && (
-          <KnowledgePage
-            setSelectedKb={setSelectedKb}
-            onEnterChat={(kb) => {
-              setSelectedKb(kb);
-              router.push(`/chat?kb=${encodeURIComponent(kb.id)}`);
-            }}
-            onEnterIngestion={(kb) => {
-              router.push(`/ingestion?kb=${encodeURIComponent(kb.id)}`);
-            }}
-            kbs={availableKbs}
-            documentRows={documentRows}
-            refreshDocuments={refreshDocuments}
-            setNotice={setNotice}
-            canDeleteDocuments={role === "超级管理员" || role === "部门管理员"}
-          />
-        )}
+        <></>
       </AppShell>
     </AuthGate>
   );

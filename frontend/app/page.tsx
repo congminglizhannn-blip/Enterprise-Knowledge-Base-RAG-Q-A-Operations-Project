@@ -9,7 +9,6 @@ import { NETWORK_ERROR_MESSAGE, isNetworkError, toFriendlyError } from "@/lib/er
 import { BUSINESS_VIEWS, ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
 import { ApiError, type AuthenticatedFetch } from "@/types/common";
 import type { UserInfo } from "@/features/auth/types";
-import { AdminPage } from "@/features/admin/AdminPage";
 import { AppShell } from "@/components/layout/AppShell";
 import type { ChatMessage, ChatSessionSummary } from "@/features/chat/types";
 import { KnowledgePage } from "@/features/documents/KnowledgePage";
@@ -211,7 +210,6 @@ function AppContent() {
             canDeleteDocuments={role === "超级管理员" || role === "部门管理员"}
           />
         )}
-        {view === "admin" && <AdminPage role={role} refreshDocuments={refreshDocuments} authenticatedFetch={authenticatedFetch} />}
       </AppShell>
     </AuthGate>
   );

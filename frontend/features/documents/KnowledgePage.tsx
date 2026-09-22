@@ -8,6 +8,7 @@ import { DocumentTable } from "./DocumentTable";
 import type { DocumentDetail, KnowledgeBase, UploadRow } from "./types";
 
 type KnowledgePageProps = {
+  focusKbId?: string;
   setSelectedKb: (kb: KnowledgeBase | null) => void;
   onEnterChat: (kb: KnowledgeBase) => void;
   onEnterIngestion: (kb: KnowledgeBase) => void;
@@ -27,6 +28,7 @@ function toFriendlyError(error: unknown, fallback: string) {
 }
 
 export function KnowledgePage({
+  focusKbId,
   setSelectedKb,
   onEnterChat,
   onEnterIngestion,
@@ -37,6 +39,7 @@ export function KnowledgePage({
   canDeleteDocuments = false,
 }: KnowledgePageProps) {
   const fileSectionRef = useRef<HTMLDivElement>(null);
+  const handledFocusKbIdRef = useRef<string | null>(null);
   const [activeKbId, setActiveKbId] = useState(kbs[0]?.id ?? "");
   const [selectedDocument, setSelectedDocument] = useState<DocumentDetail | null>(null);
   const activeDocs = documentRows.filter((doc) => doc.kbId === activeKbId && doc.status === "解析完成");
@@ -65,6 +68,17 @@ export function KnowledgePage({
     }
     window.setTimeout(() => fileSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
+
+  useEffect(() => {
+    if (!focusKbId) return;
+    if (handledFocusKbIdRef.current === focusKbId) return;
+
+    const kb = kbs.find((item) => item.id === focusKbId);
+    if (!kb) return;
+
+    handledFocusKbIdRef.current = focusKbId;
+    void viewKbFiles(kb);
+  }, [focusKbId, kbs]);
 
   async function handleDeleteDocument(doc: UploadRow) {
     if (!doc.id) return;

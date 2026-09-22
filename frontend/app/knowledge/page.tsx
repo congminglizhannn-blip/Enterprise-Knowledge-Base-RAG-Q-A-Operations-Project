@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthGate } from "@/features/auth/AuthGate";
 import { useAuth } from "@/features/auth/hooks";
@@ -81,6 +81,8 @@ function withKbStats(kbs: KnowledgeBase[], rows: UploadRow[]) {
 
 function KnowledgePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const focusKbId = searchParams.get("kb")?.trim().replace(/^<|>$/g, "") || undefined;
   const auth = useAuth();
   const role: Role = auth.user ? mapBackendRole(auth.user.role) : "普通用户";
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
@@ -159,16 +161,18 @@ function KnowledgePageContent() {
       try {
         const kbs = await loadKnowledgeBases();
         const { rows } = await loadDocuments(kbs);
-        setAvailableKbs(withKbStats(kbs, rows));
+        const enrichedKbs = withKbStats(kbs, rows);
+        setAvailableKbs(enrichedKbs);
         setDocumentRows(rows);
-        setSelectedKb(kbs[0] ?? null);
+        const target = focusKbId ? enrichedKbs.find((kb) => kb.id === focusKbId) ?? enrichedKbs[0] ?? null : enrichedKbs[0] ?? null;
+        setSelectedKb(target);
       } catch (error) {
         console.error(error);
       }
     }
 
     void load();
-  }, [auth.status, availableKbs.length, loadKnowledgeBases, loadDocuments]);
+  }, [auth.status, availableKbs.length, loadKnowledgeBases, loadDocuments, focusKbId]);
 
   return (
     <AuthGate>
@@ -184,6 +188,7 @@ function KnowledgePageContent() {
         notice={notice}
       >
         <KnowledgePage
+          focusKbId={focusKbId}
           setSelectedKb={setSelectedKb}
           onEnterChat={(kb) => router.push(`/chat?kb=${encodeURIComponent(kb.id)}`)}
           onEnterIngestion={(kb) => router.push(`/ingestion?kb=${encodeURIComponent(kb.id)}`)}
@@ -199,5 +204,9 @@ function KnowledgePageContent() {
 }
 
 export default function KnowledgeRoute() {
-  return <KnowledgePageContent />;
+  return (
+    <Suspense fallback={null}>
+      <KnowledgePageContent />
+    </Suspense>
+  );
 }

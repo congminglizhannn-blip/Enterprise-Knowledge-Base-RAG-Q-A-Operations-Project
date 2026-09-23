@@ -76,7 +76,7 @@ function reducer(state: AuthState, action: AuthAction): AuthState {
         ...initialState,
         status: "unauthenticated",
         initializing: false,
-        isLoggingOut: false,
+        isLoggingOut: true,
       };
     case "AUTH_ERROR":
       return { ...state, status: "error", initializing: false, error: action.error };

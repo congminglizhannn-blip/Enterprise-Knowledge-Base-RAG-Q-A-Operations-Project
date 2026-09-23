@@ -12,12 +12,15 @@ type AuthState = AuthProfile & {
   csrfReady: boolean;
   error: string | null;
   accessToken: string | null;
+  isLoggingOut: boolean;
 };
 
 type AuthAction =
   | { type: "AUTH_LOADING" }
   | { type: "AUTH_SUCCESS"; payload: AuthProfile; accessToken?: string | null }
   | { type: "AUTH_UNAUTHENTICATED" }
+  | { type: "AUTH_LOGGING_OUT" }
+  | { type: "AUTH_LOGGED_OUT" }
   | { type: "AUTH_ERROR"; error: string }
   | { type: "CSRF_READY"; ready: boolean };
 
@@ -37,6 +40,7 @@ const initialState: AuthState = {
   csrfReady: false,
   error: null,
   accessToken: null,
+  isLoggingOut: false,
   user: null as unknown as AuthProfile["user"],
   org: null as unknown as AuthProfile["org"],
   department: null as unknown as AuthProfile["department"],
@@ -57,12 +61,22 @@ function reducer(state: AuthState, action: AuthAction): AuthState {
         initializing: false,
         error: null,
         accessToken: action.accessToken ?? state.accessToken,
+        isLoggingOut: false,
       };
     case "AUTH_UNAUTHENTICATED":
       return {
         ...initialState,
         status: "unauthenticated",
         initializing: false,
+      };
+    case "AUTH_LOGGING_OUT":
+      return { ...state, isLoggingOut: true };
+    case "AUTH_LOGGED_OUT":
+      return {
+        ...initialState,
+        status: "unauthenticated",
+        initializing: false,
+        isLoggingOut: false,
       };
     case "AUTH_ERROR":
       return { ...state, status: "error", initializing: false, error: action.error };
@@ -141,12 +155,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [prefetchCsrf]);
 
   const logout = useCallback(async () => {
+    dispatch({ type: "AUTH_LOGGING_OUT" });
     try {
       await authApi.logout();
+    } catch {
+      // Continue clearing local auth state even if the logout request fails.
     } finally {
-      markUnauthenticated();
+      clearCsrfToken();
+      dispatch({ type: "AUTH_LOGGED_OUT" });
     }
-  }, [markUnauthenticated]);
+  }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
     ...state,

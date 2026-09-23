@@ -13,7 +13,7 @@ type AuthGateProps = {
 export function AuthGate({ children, onUnauthenticated, onMustChangePassword }: AuthGateProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { status, mustChangePassword, retry, error } = useAuth();
+  const { status, mustChangePassword, retry, error, isLoggingOut } = useAuth();
   const onUnauthenticatedRef = useRef(onUnauthenticated);
   const onMustChangePasswordRef = useRef(onMustChangePassword);
   const fallbackRedirectRef = useRef<string | null>(null);
@@ -24,6 +24,8 @@ export function AuthGate({ children, onUnauthenticated, onMustChangePassword }: 
   }, [onUnauthenticated, onMustChangePassword]);
 
   useEffect(() => {
+    if (isLoggingOut) return;
+
     if (status === "unauthenticated") {
       if (onUnauthenticatedRef.current) {
         fallbackRedirectRef.current = null;
@@ -50,7 +52,7 @@ export function AuthGate({ children, onUnauthenticated, onMustChangePassword }: 
       return;
     }
     fallbackRedirectRef.current = null;
-  }, [status, mustChangePassword, pathname, router]);
+  }, [status, mustChangePassword, pathname, router, isLoggingOut]);
 
   if (status === "loading") {
     return <div className="auth-state">正在恢复登录态...</div>;

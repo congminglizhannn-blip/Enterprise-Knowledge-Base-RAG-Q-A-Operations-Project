@@ -16,8 +16,8 @@ export default function ChangePasswordRoute() {
   }, [auth.status, router]);
 
   async function handleLogout() {
-    await auth.logout();
     router.replace("/login");
+    await auth.logout().catch(() => {});
   }
 
   return (

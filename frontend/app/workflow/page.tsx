@@ -24,8 +24,8 @@ function WorkflowPageContent() {
   }, [router]);
 
   const handleLogout = useCallback(async () => {
-    await auth.logout().catch(() => {});
     router.replace("/login");
+    await auth.logout().catch(() => {});
   }, [auth, router]);
 
   return (

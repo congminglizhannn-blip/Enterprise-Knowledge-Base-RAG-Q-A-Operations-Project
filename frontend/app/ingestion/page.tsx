@@ -142,8 +142,8 @@ function IngestionPageContent() {
   }, [auth.status, loadDocuments, loadKnowledgeBases]);
 
   const handleLogout = useCallback(async () => {
-    await auth.logout().catch(() => {});
     router.replace("/login");
+    await auth.logout().catch(() => {});
   }, [auth, router]);
 
   const handleNavigate = useCallback((view: BusinessView) => {

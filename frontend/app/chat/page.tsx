@@ -109,8 +109,8 @@ function ChatPageContent() {
   }, [auth.status, authenticatedFetch]);
 
   async function handleLogout() {
-    await auth.logout().catch(() => {});
     router.replace("/login");
+    await auth.logout().catch(() => {});
   }
 
   return (

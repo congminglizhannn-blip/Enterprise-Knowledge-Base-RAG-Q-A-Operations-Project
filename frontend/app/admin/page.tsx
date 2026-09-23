@@ -42,8 +42,8 @@ function AdminPageContent() {
   }, [router]);
 
   const handleLogout = useCallback(async () => {
-    await auth.logout().catch(() => {});
     router.replace("/login");
+    await auth.logout().catch(() => {});
   }, [auth, router]);
 
   const refreshDocuments = useCallback(async () => {

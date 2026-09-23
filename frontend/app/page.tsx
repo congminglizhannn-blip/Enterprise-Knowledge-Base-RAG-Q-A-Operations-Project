@@ -1,49 +1,25 @@
-"use client";
-
-import { Suspense, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/features/auth/hooks";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
 
-function AppContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const auth = useAuth();
-  const urlView = searchParams.get("view");
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const cookieStore = await cookies();
+  const session = cookieStore.get("session_token")?.value;
 
-  useEffect(() => {
-    if (auth.status === "loading") return;
+  if (!session) {
+    redirect("/login");
+  }
 
-    if (auth.status === "unauthenticated") {
-      router.replace("/login");
-      return;
-    }
+  const params = await searchParams;
+  const urlView = params.view;
 
-    if (auth.mustChangePassword) {
-      router.replace("/change-password");
-      return;
-    }
+  if (urlView && ROUTED_VIEWS.has(urlView as BusinessView)) {
+    redirect("/" + urlView);
+  }
 
-    if (!urlView) {
-      router.replace("/chat");
-      return;
-    }
-
-    if (ROUTED_VIEWS.has(urlView as BusinessView)) {
-      router.replace("/" + urlView);
-      return;
-    }
-
-    router.replace("/chat");
-  }, [auth.status, auth.mustChangePassword, urlView, router]);
-
-  return null;
-}
-
-export default function App() {
-  return (
-    <Suspense fallback={null}>
-      <AppContent />
-    </Suspense>
-  );
+  redirect("/chat");
 }

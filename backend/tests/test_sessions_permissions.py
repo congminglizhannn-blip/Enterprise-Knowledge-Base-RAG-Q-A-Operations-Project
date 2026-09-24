@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.sessions import list_sessions
 from app.models.enums import MessageRole, UserRole
 from app.models.chat import ChatMessage, ChatSession
+from app.models.department import Department
 
 
 @compiles(JSONB, "sqlite")
@@ -31,7 +32,7 @@ class _FakeSession:
         return _Rows()
 
 
-def test_super_admin_session_list_includes_current_org_or_own_sessions():
+def test_super_admin_session_list_is_global():
     db = _FakeSession()
     user = SimpleNamespace(id="user-1", org_id="org-1", role=UserRole.SUPER_ADMIN)
 
@@ -40,7 +41,7 @@ def test_super_admin_session_list_includes_current_org_or_own_sessions():
     sql = str(db.statement)
     assert "chat_sessions.org_id" in sql
     assert "chat_sessions.user_id" in sql
-    assert " OR " in sql
+    assert "WHERE true" in sql
 
 
 @pytest.mark.parametrize("role", [UserRole.USER, UserRole.DEPT_ADMIN, UserRole.SUPER_ADMIN])
@@ -51,9 +52,12 @@ def test_round_counts_are_per_session_and_permission_scoped(role):
     engine = create_engine("sqlite://")
     ChatSession.__table__.create(engine)
     ChatMessage.__table__.create(engine)
+    Department.__table__.create(engine)
     with Session(engine) as db:
+        db.add(Department(id=identifier("dept"), name="dept", org_id=identifier("org")))
+        db.flush()
         def add_session(owner, org, rounds, pending=False):
-            session = ChatSession(user_id=identifier(owner), org_id=identifier(org), department_id=identifier("dept"), knowledge_base_id=identifier("kb"), title="test")
+            session = ChatSession(user_id=identifier(owner), org_id=identifier(org), department_id=identifier("dept"), knowledge_base_id=identifier("kb"), title="test", round_count=rounds)
             db.add(session)
             db.flush()
             for _ in range(rounds):
@@ -72,11 +76,14 @@ def test_round_counts_are_per_session_and_permission_scoped(role):
         colleague = add_session("colleague", "org", 3)
         foreign = add_session("other", "other-org", 4)
         db.commit()
-        user = SimpleNamespace(id=identifier("me"), org_id=identifier("org"), role=role)
+        user = SimpleNamespace(id=identifier("me"), org_id=identifier("org"), department_id=identifier("dept"), role=role)
         counts = {row.id: row.qa_round_count for row in list_sessions(user, db)}
         expected = {first.id: 2, second.id: 1, empty.id: 0, unanswered.id: 0}
-        if role == UserRole.SUPER_ADMIN:
+        if role in (UserRole.SUPER_ADMIN, UserRole.DEPT_ADMIN):
             expected[colleague.id] = 3
+        if role == UserRole.SUPER_ADMIN:
+            expected[foreign.id] = 4
         assert counts == expected
-        assert foreign.id not in counts
+        if role != UserRole.SUPER_ADMIN:
+            assert foreign.id not in counts
     engine.dispose()

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, auth, chat, departments, documents, knowledge_bases, organizations, processes, sessions, upload, users
+from app.api import admin, auth, chat, departments, documents, history, knowledge_bases, organizations, processes, sessions, upload, users
 from app.core.config import settings
 
 
@@ -30,6 +30,7 @@ app.include_router(documents.router, prefix="/api/documents", tags=["documents"]
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
+app.include_router(history.router, prefix="/api/qa-history", tags=["history"])
 app.include_router(processes.router, prefix="/api/processes", tags=["processes"])
 
 

@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,15 @@ class ChatSession(UUIDMixin, TimestampMixin, Base):
     org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     department_id: Mapped[str] = mapped_column(ForeignKey("departments.id"), index=True)
     title: Mapped[str] = mapped_column(String(180), default="新会话")
+    user_name_snapshot: Mapped[str | None] = mapped_column(String(120))
+    round_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    __table_args__ = (
+        Index("ix_chat_sessions_updated_at", "updated_at"),
+        Index("ix_chat_sessions_dept_updated", "department_id", "updated_at"),
+        Index("ix_chat_sessions_user_updated", "user_id", "updated_at"),
+        Index("ix_chat_sessions_kb_updated", "knowledge_base_id", "updated_at"),
+        Index("ix_chat_sessions_round_updated", "round_count", "updated_at"),
+    )
 
     organization = relationship("Organization")
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")

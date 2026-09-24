@@ -13,6 +13,7 @@ class Department(UUIDMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text)
     org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    parent_id: Mapped[str | None] = mapped_column(ForeignKey("departments.id"), index=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

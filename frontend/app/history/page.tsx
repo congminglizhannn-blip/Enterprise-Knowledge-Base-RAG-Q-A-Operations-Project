@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthGate } from "@/features/auth/AuthGate";
@@ -8,35 +8,13 @@ import { useAuth } from "@/features/auth/hooks";
 import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
 import { HistoryPage } from "@/features/chat/HistoryPage";
-import type {
-  ChatSessionSummary,
-} from "@/features/chat/types";
-import { apiFetch } from "@/lib/apiClient";
+import type { HistoryRole } from "@/features/chat/historyTypes";
 import { ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
-import { ApiError } from "@/types/common";
 
 function HistoryPageContent() {
   const router = useRouter();
   const auth = useAuth();
   const role: Role = auth.user ? mapBackendRole(auth.user.role) : "普通用户";
-
-  const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
-  const [notice, setNotice] = useState("");
-
-  const handleUnauthorized = useCallback(() => {
-    router.replace("/login");
-  }, [router]);
-
-  const authenticatedFetch = useCallback(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    try {
-      return await apiFetch(input, init);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        handleUnauthorized();
-      }
-      throw error;
-    }
-  }, [handleUnauthorized]);
 
   const handleNavigate = useCallback((view: BusinessView) => {
     if (ROUTED_VIEWS.has(view)) {
@@ -51,22 +29,6 @@ function HistoryPageContent() {
     await auth.logout().catch(() => {});
   }, [auth, router]);
 
-  useEffect(() => {
-    if (auth.status !== "authenticated") return;
-
-    async function load() {
-      try {
-        const res = await authenticatedFetch("/api/sessions");
-        const sessions: ChatSessionSummary[] = await res.json();
-        setChatSessions(sessions);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    void load();
-  }, [auth.status, authenticatedFetch]);
-
   return (
     <AuthGate>
       <AppShell
@@ -78,11 +40,11 @@ function HistoryPageContent() {
         departmentName={auth.department?.name ?? "未识别部门"}
         userName={auth.user?.full_name || auth.user?.username || "当前用户"}
         onLogout={handleLogout}
-        notice={notice}
       >
         <HistoryPage
-          sessions={chatSessions}
-          setNotice={setNotice}
+          key={`${auth.user?.id}-${auth.user?.role}-${auth.user?.department_id}`}
+          role={(auth.user?.role ?? "user") as HistoryRole}
+          departmentName={auth.department?.name ?? "当前部门"}
         />
       </AppShell>
     </AuthGate>

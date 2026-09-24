@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -12,6 +13,7 @@ from app.models.department import Department
 from app.models.enums import UserRole
 from app.models.organization import Organization
 from app.models.user import User
+from app.services.history_scope import department_tree_ids
 
 router = APIRouter()
 
@@ -20,12 +22,24 @@ class DepartmentCreateRequest(BaseModel):
     name: str
     org_id: str | None = None
     description: str | None = None
+    parent_id: UUID | None = None
 
 
 class DepartmentUpdateRequest(BaseModel):
     name: str
     org_id: str | None = None
     description: str | None = None
+    parent_id: UUID | None = None
+
+
+def validate_parent(db, parent_id, org_id, department=None):
+    if parent_id is None:
+        return
+    parent = db.get(Department, parent_id)
+    if not parent or parent.org_id != org_id or parent.is_archived:
+        raise HTTPException(400, detail="上级部门必须是同组织内可用部门")
+    if department and parent_id in department_tree_ids(db, department.org_id, department.id):
+        raise HTTPException(400, detail="上级部门不能是自身或子部门")
 
 
 @router.get("")
@@ -66,7 +80,9 @@ def create_department(
     if db.scalar(select(Department).where(Department.name == name)):
         raise HTTPException(status_code=409, detail={"code": "DEPARTMENT_NAME_TAKEN", "message": "部门名称已存在"})
 
-    department = Department(name=name, org_id=org.id, description=payload.description)
+    parent_id = str(payload.parent_id) if payload.parent_id else None
+    validate_parent(db, parent_id, org.id)
+    department = Department(name=name, org_id=org.id, description=payload.description, parent_id=parent_id)
     db.add(department)
     db.commit()
     db.refresh(department)
@@ -102,6 +118,13 @@ def update_department(
     if existing:
         raise HTTPException(status_code=409, detail={"code": "DEPARTMENT_NAME_TAKEN", "message": "部门名称已存在"})
 
+    parent_id = (str(payload.parent_id) if payload.parent_id else None) if "parent_id" in payload.model_fields_set else department.parent_id
+    if current_user.role != UserRole.SUPER_ADMIN and parent_id != department.parent_id:
+        raise HTTPException(403, detail="仅超级管理员可调整部门层级")
+    if org.id != department.org_id:
+        raise HTTPException(400, detail="部门已有审计归属，不能跨组织迁移；请在目标组织创建部门")
+    validate_parent(db, parent_id, org.id, department)
+    department.parent_id = parent_id
     department.name = name
     department.org_id = org.id
     department.description = payload.description

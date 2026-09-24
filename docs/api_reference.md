@@ -71,10 +71,20 @@
 
 ## Sessions
 
-- `GET /api/sessions`：按当前用户权限列出最近 50 条会话，每条返回 `qa_round_count`（问答轮数）。当前问答链路在流结束后将提问和回答一起提交，因此按该会话已保存的 assistant 消息数统计：一问一答为 1 轮，仅有提问、尚未保存回答不计入，空会话为 0。统计仅针对本次权限过滤后返回的会话，旧会话实时统计，无需回填或数据库迁移。
+- `GET /api/sessions`：兼容聊天页的数组接口，按权限返回最近 50 条会话，每条 `qa_round_count` 来自已持久化的 `chat_sessions.round_count`。超级管理员全量，部门管理员本部门及子部门，普通用户仅本人。与新历史接口和会话详情共用 DataScope。
 - `POST /api/sessions`：创建会话，请求体包含 `knowledge_base_id` 和可选 `title`。
 - `GET /api/sessions/{session_id}`：读取会话详情和消息列表。
-- `DELETE /api/sessions/{session_id}`：删除当前用户可访问的会话及其消息。
+
+### 分页历史与筛选
+
+- `GET /api/qa-history`：返回 `{items, total, page, page_size}`。每项为 `id,title,user_id,user_name,org_id,org_name,dept_id,dept_name,kb_id,kb_name,round_count,created_at,updated_at`，ID 均为 UUID 字符串。
+- 参数：`keyword`（最多 200 字）、`org_id`、`dept_id`、`kb_id`、`user_id`、`start_time`、`end_time`、`sort_by=updated_at|round_count`、`sort_order=asc|desc`、`page>=1`、`page_size=1..100`（默认 20）。默认更新时间倒序；相同排序值按会话 ID 稳定排序。关键词匹配标题、用户姓名/姓名快照、用户名、知识库名称和提问原文，`%`/`_` 按普通字符处理。时间筛选针对更新时间，使用带时区 ISO 8601，边界包含；倒置时间或非法参数返回 422。
+- 后端强制范围：`super_admin` 全量并可筛选全部字段；`dept_admin` 强制当前组织内本部门及递归子部门，忽略传入的组织/部门筛选；`user` 强制本人，忽略组织/部门/用户筛选。部门管理员筛选范围外用户返回 403；用户调岗后原部门内有其历史的管理员仍可筛选该历史作者。非超管筛选无权限知识库返回 403。
+- `GET /api/qa-history/filter-options?org_id=...`：返回 `{organizations, departments, knowledge_bases, users}`，每项至少 `{id,name}`。超管可按组织联动部门；部门管理员不返回组织，返回本部门树、可见知识库及本部门当前用户/历史作者；普通用户仅返回可见知识库。选项每次从数据库按权限生成，不缓存。知识库包含权限范围内禁用库，便于审计；不会因此开放新问答权限。
+- 会话创建使用提问用户的组织、部门及姓名快照。每轮流结束后，两条消息、`round_count + 1` 和更新时间同事务提交；新增轮数使用 SQL 原子增量。切换知识库或用户调岗后再次提问创建新会话，旧会话快照不变。查看他人会话仅用于审计，不允许代其继续问答或删除。
+- 部门 `POST /api/departments` / `PUT /api/departments/{id}` 支持可选 `parent_id`（UUID/null）；更新不传则保留原层级。只有超级管理员可调整层级；拒绝跨组织父级、自身或子孙部门作为父级、归档父级。为保留审计归属，不允许跨组织移动已有部门。历史审计递归范围包含归档部门。
+- 部署前执行迁移 `20260924_0402`。迁移按现存 assistant 消息回填轮数，并将旧的知识库组织归属一次性修正为作者当前组织/部门。旧调岗时点和旧会话被覆盖前的知识库无法可靠还原，详见 `docs/history_upgrade.md`。
+- `DELETE /api/sessions/{session_id}`：仅允许删除本人会话及其消息，审计他人会话不能删除（403）。
 
 ## DeepSeek
 

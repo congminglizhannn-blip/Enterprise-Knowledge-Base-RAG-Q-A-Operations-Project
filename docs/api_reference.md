@@ -73,7 +73,7 @@
 
 - `GET /api/sessions`：兼容聊天页的数组接口，按权限返回最近 50 条会话，每条 `qa_round_count` 来自已持久化的 `chat_sessions.round_count`。超级管理员全量，部门管理员本部门及子部门，普通用户仅本人。与新历史接口和会话详情共用 DataScope。
 - `GET /api/sessions?scope=mine`：聊天侧栏首次加载和问答后刷新均使用此参数，所有角色仅返回登录用户本人的最近 50 条会话，按更新时间倒序，不按当前所选知识库过滤。用户 ID 来自服务端认证，不接受前端指定他人；本人调岗前的会话也包含。`scope=audit`（默认，兼容运营总览）继续使用上述审计范围；非法 scope 返回 422。
-- `POST /api/sessions`：创建会话，请求体包含 `knowledge_base_id` 和可选 `title`。
+- `POST /api/sessions`：`/chat` 新增对话入口，创建登录用户本人的空会话，请求体包含 `knowledge_base_id` 和可选 `title`。知识库必须对当前用户可访问且可用于问答；用户、组织、部门和姓名快照均来自服务端认证。新建后 `round_count=0`，后续问答携带该 `session_id` 继续写入同一会话；默认标题 `新会话` 会在首轮问答保存时更新为首个问题标题，自定义标题不会被覆盖。
 - `GET /api/sessions/{session_id}`：读取会话详情和消息列表。
 
 ### 分页历史与筛选

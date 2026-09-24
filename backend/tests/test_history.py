@@ -178,6 +178,19 @@ def test_save_round_snapshot_atomic_count_and_kb_switch(history_data):
         prepare_session(h.db, h.manager, h.kb.id, "impersonate", h.own)
 
 
+def test_first_round_renames_default_empty_session(history_data):
+    h = history_data
+    empty = prepare_session(h.db, h.employee, h.global_kb.id, "新会话")
+    save_round(h.db, empty, "费用报销适用范围是什么？", "answer", [])
+    h.db.refresh(empty)
+    assert empty.title == "费用报销适用范围是什么？"
+
+    named = prepare_session(h.db, h.employee, h.global_kb.id, "自定义标题")
+    save_round(h.db, named, "这个问题不应覆盖标题", "answer", [])
+    h.db.refresh(named)
+    assert named.title == "自定义标题"
+
+
 def test_parent_validation_and_cycle_safe_scope(history_data):
     h = history_data
     for parent in (h.root.id, h.child.id, h.foreign.id):

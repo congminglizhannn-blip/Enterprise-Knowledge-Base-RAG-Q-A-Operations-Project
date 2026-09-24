@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 
 import { Card } from "@/components/ui/Card";
 import { DocumentDetailModal } from "@/features/documents/DocumentDetailModal";
@@ -9,6 +10,7 @@ import { ApiError, type AuthenticatedFetch } from "@/types/common";
 import { CitationPanel } from "./CitationPanel";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
+import { createChatSession } from "./api";
 import { streamChat } from "./stream";
 import type { ChatMessage, ChatSessionSummary, CitationRow } from "./types";
 
@@ -54,6 +56,7 @@ export function ChatPage({
 }: ChatPageProps) {
   const [selectedDocument, setSelectedDocument] = useState<DocumentDetail | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -96,7 +99,7 @@ export function ChatPage({
 
   async function loadSession(sessionId: string) {
     abortCurrentStream();
-    if (isRequesting) return;
+    if (isRequesting || isCreatingSession) return;
     if (isOfflineNow()) {
       setMessages((current) => [...current, { role: "assistant", content: NETWORK_ERROR_MESSAGE }]);
       return;
@@ -133,8 +136,45 @@ export function ChatPage({
     }
   }
 
+  async function createNewSession() {
+    if (isRequesting || isCreatingSession) return;
+    if (isOfflineNow()) {
+      setMessages((current) => [...current, { role: "assistant", content: NETWORK_ERROR_MESSAGE }]);
+      return;
+    }
+    if (!selectedKb) {
+      setMessages((current) => [...current, { role: "assistant", content: "请先选择知识库，再新增对话。" }]);
+      return;
+    }
+    abortCurrentStream();
+    setIsCreatingSession(true);
+    try {
+      const session = await createChatSession({
+        knowledge_base_id: selectedKb.id,
+        title: "新会话",
+      });
+      setActiveSessionId(session.id);
+      setQuestion("");
+      setMessages([]);
+      setCitations([]);
+      try {
+        await refreshSessions();
+      } catch (error) {
+        setMessages((current) => [...current, { role: "assistant", content: toFriendlyError(error, "新对话已创建，历史会话刷新失败，请稍后刷新页面。") }]);
+      }
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        onUnauthorized();
+        return;
+      }
+      setMessages((current) => [...current, { role: "assistant", content: toFriendlyError(error, "新增对话失败，请确认当前知识库权限和后端服务状态。") }]);
+    } finally {
+      setIsCreatingSession(false);
+    }
+  }
+
   async function ask() {
-    if (isRequesting) return;
+    if (isRequesting || isCreatingSession) return;
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) return;
     if (isOfflineNow()) {
@@ -209,14 +249,24 @@ export function ChatPage({
           {availableKbs.length === 0 && <option value="">暂无可用知识库</option>}
           {availableKbs.map((kb) => <option key={kb.id} value={kb.id}>{kb.name}</option>)}
         </select>
-        <h3>历史会话</h3>
+        <button
+          className="primary-btn small new-session-btn"
+          disabled={!selectedKb || isRequesting || isCreatingSession}
+          onClick={createNewSession}
+          type="button"
+          aria-label="新增对话"
+        >
+          <Plus size={16} />
+          {isCreatingSession ? "创建中" : "新增对话"}
+        </button>
+        <h3 className="chat-history-title">历史会话</h3>
         {chatSessions.length === 0 ? (
           <div className="empty-mini">暂无历史会话</div>
         ) : chatSessions.map((session) => (
           <button
             className={`session-item ${activeSessionId === session.id ? "active" : ""}`}
             key={session.id}
-            disabled={isRequesting}
+            disabled={isRequesting || isCreatingSession}
             onClick={() => loadSession(session.id)}
           >
             {session.title}

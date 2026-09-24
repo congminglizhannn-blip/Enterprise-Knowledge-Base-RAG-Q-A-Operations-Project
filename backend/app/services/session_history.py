@@ -7,10 +7,18 @@ from app.models.chat import ChatMessage, ChatSession
 from app.models.enums import MessageRole
 
 
+DEFAULT_SESSION_TITLE = "新会话"
+
+
+def question_title(question):
+    title = " ".join(question.split())
+    return title[:60] or DEFAULT_SESSION_TITLE
+
+
 def new_session(user, kb_id, title):
     return ChatSession(user_id=user.id, knowledge_base_id=kb_id, org_id=user.org_id,
                        department_id=user.department_id, user_name_snapshot=user.full_name or user.username,
-                       title=title[:180] or "新会话", round_count=0)
+                       title=title[:180] or DEFAULT_SESSION_TITLE, round_count=0)
 
 
 def prepare_session(db, user, kb_id, title, previous=None):
@@ -30,8 +38,13 @@ def save_round(db, session, question, answer, citations):
         ChatMessage(session_id=session.id, role=MessageRole.USER, content=question, retrieved_chunks=None),
         ChatMessage(session_id=session.id, role=MessageRole.ASSISTANT, content=answer, retrieved_chunks=citations),
     ])
+    values = {
+        "round_count": ChatSession.round_count + 1,
+        "updated_at": now,
+    }
+    if session.round_count == 0 and session.title == DEFAULT_SESSION_TITLE:
+        values["title"] = question_title(question)
     # SQL increment avoids lost counts when two answers finish concurrently.
-    db.execute(update(ChatSession).where(ChatSession.id == session.id).values(
-        round_count=ChatSession.round_count + 1, updated_at=now,
-    ))
+    db.execute(update(ChatSession).where(ChatSession.id == session.id).values(**values))
     db.commit()
+    db.refresh(session)

@@ -836,6 +836,16 @@ tbody tr:nth-child(even) {
   font-weight: 800;
 }
 
+.new-session-btn {
+  width: 100%;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chat-history-title {
+  margin: 2px 0 0;
+}
+
 .session-item {
   min-height: 42px;
   flex-shrink: 0;

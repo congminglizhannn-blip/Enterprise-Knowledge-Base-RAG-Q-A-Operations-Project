@@ -12,4 +12,8 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default (phase) => {
+  const development = phase === "phase-development-server";
+  return { ...nextConfig, distDir: development ? ".next" : ".next-production",
+    typescript: { tsconfigPath: development ? "tsconfig.json" : "tsconfig.build.json" } };
+};

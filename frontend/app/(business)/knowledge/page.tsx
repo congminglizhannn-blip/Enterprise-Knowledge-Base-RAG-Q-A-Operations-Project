@@ -2,17 +2,19 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AppShell } from "@/components/layout/AppShell";
-import { AuthGate } from "@/features/auth/AuthGate";
 import { useAuth } from "@/features/auth/hooks";
 import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
-import { IngestionPage } from "@/features/documents/IngestionPage";
-import type { BackendDocument, BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
-import { apiFetch } from "@/lib/apiClient";
+import { KnowledgePage } from "@/features/documents/KnowledgePage";
+import type {
+  BackendDocument,
+  BackendKnowledgeBase,
+  KnowledgeBase,
+  UploadRow,
+} from "@/features/documents/types";
+import { apiFetch, clearReadCache } from "@/lib/apiClient";
 import { toFriendlyError } from "@/lib/errors";
-import { ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
-import { ApiError, type AuthenticatedFetch } from "@/types/common";
+import { ApiError } from "@/types/common";
 
 function mapKnowledgeBase(kb: BackendKnowledgeBase): KnowledgeBase {
   return {
@@ -74,22 +76,23 @@ function withKbStats(kbs: KnowledgeBase[], rows: UploadRow[]) {
   });
 }
 
-function IngestionPageContent() {
+function KnowledgePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const kbId = searchParams.get("kb")?.trim().replace(/^<|>$/g, "") || null;
+  const focusKbId = searchParams.get("kb")?.trim().replace(/^<|>$/g, "") || undefined;
   const auth = useAuth();
   const role: Role = auth.user ? mapBackendRole(auth.user.role) : "普通用户";
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
   const [availableKbs, setAvailableKbs] = useState<KnowledgeBase[]>([]);
   const [documentRows, setDocumentRows] = useState<UploadRow[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
   const [notice, setNotice] = useState("");
 
   const handleUnauthorized = useCallback(() => {
     router.replace("/login");
   }, [router]);
 
-  const authenticatedFetch: AuthenticatedFetch = useCallback(async (input, init = {}) => {
+  const authenticatedFetch = useCallback(async (input: RequestInfo | URL, init: RequestInit = {}) => {
     try {
       return await apiFetch(input, init);
     } catch (error) {
@@ -106,18 +109,12 @@ function IngestionPageContent() {
     return kbs.map(mapKnowledgeBase);
   }, [authenticatedFetch]);
 
-  const loadDocuments = useCallback(async (kbs: KnowledgeBase[], options: { tolerateFailures?: boolean } = {}) => {
+  const loadDocuments = useCallback(async (kbs: KnowledgeBase[]) => {
     const requests = kbs.map(async (kb) => {
       const response = await authenticatedFetch(`/api/documents?knowledge_base_id=${encodeURIComponent(kb.id)}`);
-      const documents = await response.json();
-      return documents.map((document: Parameters<typeof mapDocument>[0]) => mapDocument(document, kbs));
+      const documents: BackendDocument[] = await response.json();
+      return documents.map((document) => mapDocument(document, kbs));
     });
-
-    if (!options.tolerateFailures) {
-      const lists = await Promise.all(requests);
-      return { rows: lists.flat(), failedCount: 0 };
-    }
-
     const results = await Promise.allSettled(requests);
     const rows = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
     const failedCount = results.filter((result) => result.status === "rejected").length;
@@ -125,10 +122,11 @@ function IngestionPageContent() {
   }, [authenticatedFetch]);
 
   const refreshDocuments = useCallback(async (nextKbs?: KnowledgeBase[]) => {
+    clearReadCache();
     if (auth.status !== "authenticated") return;
     try {
       const kbs = nextKbs ?? await loadKnowledgeBases();
-      const { rows, failedCount } = await loadDocuments(kbs, { tolerateFailures: true });
+      const { rows, failedCount } = await loadDocuments(kbs);
       setDocumentRows(rows);
       setAvailableKbs(withKbStats(kbs, rows));
       setSelectedKb((current) => {
@@ -139,72 +137,54 @@ function IngestionPageContent() {
     } catch (error) {
       setNotice(toFriendlyError(error, "刷新知识库和文件失败，已保留当前页面数据。"));
     }
-  }, [auth.status, loadDocuments, loadKnowledgeBases]);
-
-  const handleLogout = useCallback(async () => {
-    router.replace("/login");
-    await auth.logout().catch(() => {});
-  }, [auth, router]);
-
-  const handleNavigate = useCallback((view: BusinessView) => {
-    if (ROUTED_VIEWS.has(view)) {
-      router.push(`/${view}`);
-    } else {
-      router.push(`/?view=${view}`);
-    }
-  }, [router]);
+  }, [auth.status, loadKnowledgeBases, loadDocuments]);
 
   useEffect(() => {
     if (auth.status !== "authenticated") return;
+    if (availableKbs.length > 0) return;
 
     async function load() {
       try {
         const kbs = await loadKnowledgeBases();
-        const { rows } = await loadDocuments(kbs, { tolerateFailures: true });
-        const kbsWithStats = withKbStats(kbs, rows);
-        setAvailableKbs(kbsWithStats);
+        const { rows } = await loadDocuments(kbs);
+        const enrichedKbs = withKbStats(kbs, rows);
+        setAvailableKbs(enrichedKbs);
         setDocumentRows(rows);
-        setSelectedKb(kbsWithStats.find((kb) => kb.id === kbId) ?? kbsWithStats[0] ?? null);
+        const target = focusKbId ? enrichedKbs.find((kb) => kb.id === focusKbId) ?? enrichedKbs[0] ?? null : enrichedKbs[0] ?? null;
+        setSelectedKb(target);
       } catch (error) {
-        if (!(error instanceof ApiError && error.status === 401)) {
-          console.error(error);
-        }
+        setNotice("页面数据加载失败，请刷新页面重试。");
+      } finally {
+        setLoadingData(false);
       }
     }
 
     void load();
-  }, [auth.status, kbId, loadDocuments, loadKnowledgeBases]);
+  }, [auth.status, availableKbs.length, loadKnowledgeBases, loadDocuments, focusKbId]);
 
   return (
-    <AuthGate>
-      <AppShell
-        active="ingestion"
-        onNavigate={handleNavigate}
-        title="文档入库"
-        role={role}
-        orgName={auth.org?.name ?? "未识别组织"}
-        departmentName={auth.department?.name ?? "未识别部门"}
-        userName={auth.user?.full_name || auth.user?.username || "当前用户"}
-        onLogout={handleLogout}
-        notice={notice}
-      >
-        <IngestionPage
-          selectedKb={selectedKb}
-          availableKbs={availableKbs}
-          role={role}
+    <>
+      {notice && <div className="notice-bar">{notice}</div>}
+
+        {loadingData ? <div role="status" className="p-6 text-sm text-gray-500">正在加载数据...</div> : <KnowledgePage
+          focusKbId={focusKbId}
+          setSelectedKb={setSelectedKb}
+          onEnterChat={(kb) => router.push(`/chat?kb=${encodeURIComponent(kb.id)}`)}
+          onEnterIngestion={(kb) => router.push(`/ingestion?kb=${encodeURIComponent(kb.id)}`)}
+          kbs={availableKbs}
           documentRows={documentRows}
-          setDocumentRows={setDocumentRows}
           refreshDocuments={refreshDocuments}
-        />
-      </AppShell>
-    </AuthGate>
+          setNotice={setNotice}
+          canDeleteDocuments={role === "超级管理员" || role === "部门管理员"}
+        />}
+    </>
   );
 }
 
-export default function IngestionRoute() {
+export default function KnowledgeRoute() {
   return (
     <Suspense fallback={null}>
-      <IngestionPageContent />
+      <KnowledgePageContent />
     </Suspense>
   );
 }

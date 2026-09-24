@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppShell } from "@/components/layout/AppShell";
-import { AuthGate } from "@/features/auth/AuthGate";
 import { useAuth } from "@/features/auth/hooks";
 import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
@@ -16,7 +14,6 @@ import type {
   UploadRow,
 } from "@/features/documents/types";
 import { apiFetch } from "@/lib/apiClient";
-import { ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
 import { ApiError } from "@/types/common";
 
 function mapKnowledgeBase(kb: BackendKnowledgeBase): KnowledgeBase {
@@ -87,6 +84,8 @@ function DashboardPageContent() {
   const [availableKbs, setAvailableKbs] = useState<KnowledgeBase[]>([]);
   const [documentRows, setDocumentRows] = useState<UploadRow[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
+  const [sessionNotice, setSessionNotice] = useState("");
+  const [loadingData, setLoadingData] = useState(true);
   const [notice, setNotice] = useState("");
 
   const handleUnauthorized = useCallback(() => {
@@ -103,19 +102,6 @@ function DashboardPageContent() {
       throw error;
     }
   }, [handleUnauthorized]);
-
-  const handleNavigate = useCallback((view: BusinessView) => {
-    if (ROUTED_VIEWS.has(view)) {
-      router.push("/" + view);
-    } else {
-      router.push("/?view=" + view);
-    }
-  }, [router]);
-
-  const handleLogout = useCallback(async () => {
-    router.replace("/login");
-    await auth.logout().catch(() => {});
-  }, [auth, router]);
 
   useEffect(() => {
     if (auth.status !== "authenticated") return;
@@ -139,32 +125,29 @@ function DashboardPageContent() {
         setDocumentRows(rows);
         setNotice(failedCount > 0 ? `运营数据已加载，${failedCount} 个知识库的文件列表暂时加载失败。` : "");
 
-        const sessionsResponse = await authenticatedFetch("/api/sessions");
-        const sessions: ChatSessionSummary[] = await sessionsResponse.json();
-        setChatSessions(sessions);
+
       } catch (error) {
-        console.error(error);
+        setNotice("页面数据加载失败，请刷新页面重试。");
         setNotice("运营总览数据加载失败，请稍后重试。");
+      } finally {
+        setLoadingData(false);
       }
     }
 
+    let active = true;
+    void authenticatedFetch("/api/sessions").then(response => response.json()).then((sessions: ChatSessionSummary[]) => {
+      if (active) setChatSessions(sessions);
+    }).catch(() => { if (active) setSessionNotice("问答统计加载失败，请稍后重试。"); });
     void load();
+    return () => { active = false; };
   }, [auth.status, authenticatedFetch]);
 
   return (
-    <AuthGate>
-      <AppShell
-        active="dashboard"
-        onNavigate={handleNavigate}
-        title="运营总览"
-        role={role}
-        orgName={auth.org?.name ?? "未识别组织"}
-        departmentName={auth.department?.name ?? "未识别部门"}
-        userName={auth.user?.full_name || auth.user?.username || "当前用户"}
-        onLogout={handleLogout}
-        notice={notice}
-      >
-        <Dashboard
+    <>
+      {sessionNotice && <div className="notice-bar">{sessionNotice}</div>}
+      {notice && <div className="notice-bar">{notice}</div>}
+
+        {loadingData ? <div role="status" className="p-6 text-sm text-gray-500">正在加载数据...</div> : <Dashboard
           onEnterChat={() => router.push("/chat")}
           onEnterIngestion={() => router.push("/ingestion")}
           onEnterWorkflow={() => router.push("/workflow")}
@@ -172,9 +155,8 @@ function DashboardPageContent() {
           kbs={availableKbs}
           documentRows={documentRows}
           chatSessions={chatSessions}
-        />
-      </AppShell>
-    </AuthGate>
+        />}
+    </>
   );
 }
 

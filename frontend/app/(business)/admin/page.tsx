@@ -2,14 +2,11 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppShell } from "@/components/layout/AppShell";
-import { AuthGate } from "@/features/auth/AuthGate";
 import { useAuth } from "@/features/auth/hooks";
 import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
 import { AdminPage } from "@/features/admin/AdminPage";
 import { apiFetch } from "@/lib/apiClient";
-import { ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
 import { ApiError } from "@/types/common";
 
 function AdminPageContent() {
@@ -33,19 +30,6 @@ function AdminPageContent() {
     }
   }, [handleUnauthorized]);
 
-  const handleNavigate = useCallback((view: BusinessView) => {
-    if (ROUTED_VIEWS.has(view)) {
-      router.push("/" + view);
-    } else {
-      router.push("/?view=" + view);
-    }
-  }, [router]);
-
-  const handleLogout = useCallback(async () => {
-    router.replace("/login");
-    await auth.logout().catch(() => {});
-  }, [auth, router]);
-
   const refreshDocuments = useCallback(async () => {
     if (auth.status !== "authenticated") return;
     try {
@@ -61,25 +45,15 @@ function AdminPageContent() {
   }, [auth.status, authenticatedFetch]);
 
   return (
-    <AuthGate>
-      <AppShell
-        active="admin"
-        onNavigate={handleNavigate}
-        title="系统管理"
-        role={role}
-        orgName={auth.org?.name ?? "未识别组织"}
-        departmentName={auth.department?.name ?? "未识别部门"}
-        userName={auth.user?.full_name || auth.user?.username || "当前用户"}
-        onLogout={handleLogout}
-        notice={notice}
-      >
+    <>
+      {notice && <div className="notice-bar">{notice}</div>}
+
         <AdminPage
           role={role}
           refreshDocuments={refreshDocuments}
           authenticatedFetch={authenticatedFetch}
         />
-      </AppShell>
-    </AuthGate>
+    </>
   );
 }
 

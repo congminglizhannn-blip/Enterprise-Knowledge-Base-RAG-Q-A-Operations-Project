@@ -21,3 +21,5 @@ tsconfig.tsbuildinfo
 backup.sql
 */backup.sql
 rag_db.dump
+
+frontend/.next-production/

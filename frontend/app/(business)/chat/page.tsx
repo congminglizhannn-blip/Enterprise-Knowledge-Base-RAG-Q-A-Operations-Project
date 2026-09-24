@@ -2,8 +2,6 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AppShell } from "@/components/layout/AppShell";
-import { AuthGate } from "@/features/auth/AuthGate";
 import { useAuth } from "@/features/auth/hooks";
 import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
@@ -12,7 +10,6 @@ import type { ChatMessage, ChatSessionSummary, CitationRow } from "@/features/ch
 import type { BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
 import { apiFetch } from "@/lib/apiClient";
 import { toFriendlyError } from "@/lib/errors";
-import { ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
 import { ApiError, type AuthenticatedFetch } from "@/types/common";
 
 function mapKnowledgeBase(kb: BackendKnowledgeBase): KnowledgeBase {
@@ -78,7 +75,7 @@ function ChatPageContent() {
     async function load() {
       const [kbsResult, sessionsResult] = await Promise.allSettled([
         authenticatedFetch("/api/kbs").then((response) => response.json() as Promise<BackendKnowledgeBase[]>),
-        authenticatedFetch("/api/sessions").then((response) => response.json() as Promise<ChatSessionSummary[]>),
+        authenticatedFetch("/api/sessions?scope=mine").then((response) => response.json() as Promise<ChatSessionSummary[]>),
       ]);
       if (cancelled) return;
       const errors: string[] = [];
@@ -105,17 +102,9 @@ function ChatPageContent() {
     return () => { cancelled = true; };
   }, [auth.status, authenticatedFetch, kbId]);
 
-  const handleNavigate = useCallback((view: BusinessView) => {
-    if (ROUTED_VIEWS.has(view)) {
-      router.push(`/${view}`);
-    } else {
-      router.push(`/?view=${view}`);
-    }
-  }, [router]);
-
   const refreshSessions = useCallback(async () => {
     if (auth.status !== "authenticated") return;
-    const response = await authenticatedFetch("/api/sessions");
+    const response = await authenticatedFetch("/api/sessions?scope=mine");
     setChatSessions(await response.json());
   }, [auth.status, authenticatedFetch]);
 
@@ -125,18 +114,9 @@ function ChatPageContent() {
   }
 
   return (
-    <AuthGate>
-      <AppShell
-        active="chat"
-        onNavigate={handleNavigate}
-        title="知识库问答"
-        role={role}
-        orgName={auth.org?.name ?? "未识别组织"}
-        departmentName={auth.department?.name ?? "未识别部门"}
-        userName={auth.user?.full_name || auth.user?.username || "当前用户"}
-        onLogout={handleLogout}
-        notice={loadNotice}
-      >
+    <>
+      {loadNotice && <div className="notice-bar">{loadNotice}</div>}
+
         <ChatPage
           selectedKb={selectedKb}
           setSelectedKb={setSelectedKb}
@@ -154,8 +134,7 @@ function ChatPageContent() {
           onUnauthorized={handleUnauthorized}
           authenticatedFetch={authenticatedFetch}
         />
-      </AppShell>
-    </AuthGate>
+    </>
   );
 }
 

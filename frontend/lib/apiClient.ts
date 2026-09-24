@@ -1,4 +1,8 @@
+import { createReadCache } from "./readCache";
 import { ApiError, type ApiErrorPayload } from "@/types/common";
+
+const readCache = createReadCache();
+export function clearReadCache() { readCache.clear(); }
 
 const isBrowser = typeof window !== "undefined";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
@@ -108,6 +112,7 @@ async function fetchWithNetworkError(input: RequestInfo | URL, init?: RequestIni
 
 function notifyUnauthenticated(options: ApiRequestInit) {
   if (!options.skipAuthRedirect) {
+    clearReadCache();
     onUnauthenticated?.();
   }
 }
@@ -177,7 +182,7 @@ async function withCsrf(init: ApiRequestInit): Promise<RequestInit> {
   };
 }
 
-export async function apiFetch(input: RequestInfo | URL, init: ApiRequestInit = {}): Promise<Response> {
+async function uncachedApiFetch(input: RequestInfo | URL, init: ApiRequestInit = {}): Promise<Response> {
   assertBrowser("apiFetch");
   const shouldRetryOnCsrfInvalid = init.retryOnCsrfInvalid ?? true;
   const response = await fetchWithNetworkError(resolveApiUrl(input), await withCsrf(init));
@@ -211,6 +216,23 @@ export async function apiFetch(input: RequestInfo | URL, init: ApiRequestInit = 
   return response;
 }
 
+export async function apiFetch(input: RequestInfo | URL, init: ApiRequestInit = {}): Promise<Response> {
+  assertBrowser("apiFetch");
+  const mutation = needsCsrf(init.method);
+  if (mutation) clearReadCache();
+  try {
+    const cacheable = (init.method ?? "GET").toUpperCase() === "GET"
+      && typeof input === "string"
+      && (input === "/api/kbs" || input.startsWith("/api/documents?knowledge_base_id="))
+      && !init.signal && !init.headers && !init.cache;
+    return cacheable
+      ? await readCache.read(input as string, () => uncachedApiFetch(input, init))
+      : await uncachedApiFetch(input, init);
+  } finally {
+    if (mutation) clearReadCache();
+  }
+}
+
 export async function apiJson<T>(input: RequestInfo | URL, init: ApiRequestInit = {}): Promise<T> {
   const response = await apiFetch(input, init);
   return response.json() as Promise<T>;
@@ -218,6 +240,7 @@ export async function apiJson<T>(input: RequestInfo | URL, init: ApiRequestInit 
 
 export async function streamFetch(input: RequestInfo | URL, init: ApiRequestInit = {}): Promise<Response> {
   assertBrowser("streamFetch");
+  clearReadCache();
   const response = await fetchWithNetworkError(resolveApiUrl(input), await withCsrf({
     ...init,
     retryOnCsrfInvalid: false,

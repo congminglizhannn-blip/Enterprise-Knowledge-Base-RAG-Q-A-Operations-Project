@@ -54,6 +54,8 @@ export function AuthGate({ children, onUnauthenticated, onMustChangePassword }: 
     fallbackRedirectRef.current = null;
   }, [status, mustChangePassword, pathname, router, isLoggingOut]);
 
+  if (isLoggingOut) return null;
+
   if (status === "loading") {
     return <div className="auth-state">正在恢复登录态...</div>;
   }

@@ -79,6 +79,8 @@ def test_round_counts_are_per_session_and_permission_scoped(role):
         user = SimpleNamespace(id=identifier("me"), org_id=identifier("org"), department_id=identifier("dept"), role=role)
         counts = {row.id: row.qa_round_count for row in list_sessions(user, db)}
         expected = {first.id: 2, second.id: 1, empty.id: 0, unanswered.id: 0}
+        personal = {row.id: row.qa_round_count for row in list_sessions(user, db, scope="mine")}
+        assert personal == expected
         if role in (UserRole.SUPER_ADMIN, UserRole.DEPT_ADMIN):
             expected[colleague.id] = 3
         if role == UserRole.SUPER_ADMIN:

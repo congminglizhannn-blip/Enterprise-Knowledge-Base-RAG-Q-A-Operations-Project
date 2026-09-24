@@ -9,7 +9,7 @@ export type CreateChatSessionPayload = {
 };
 
 export function listChatSessions(): Promise<ChatSession[]> {
-  return apiJson<ChatSession[]>("/api/sessions");
+  return apiJson<ChatSession[]>("/api/sessions?scope=mine");
 }
 
 export function getChatSession(id: string): Promise<ChatSession> {

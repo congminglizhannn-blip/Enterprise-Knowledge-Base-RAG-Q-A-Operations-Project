@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -23,8 +25,13 @@ def get_accessible_session(db: Session, session_id: str, user: User) -> ChatSess
 
 
 @router.get("", response_model=list[ChatSessionListRead])
-def list_sessions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    stmt = apply_data_scope(select(ChatSession), get_data_scope(db, current_user)).order_by(ChatSession.updated_at.desc(), ChatSession.id).limit(50)
+def list_sessions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), scope: Literal["mine", "audit"] = "audit"):
+    # Personal chat history is based on ownership, including the user's old department snapshots.
+    if scope == "mine":
+        stmt = select(ChatSession).where(ChatSession.user_id == current_user.id)
+    else:
+        stmt = apply_data_scope(select(ChatSession), get_data_scope(db, current_user))
+    stmt = stmt.order_by(ChatSession.updated_at.desc(), ChatSession.id).limit(50)
     sessions = db.scalars(stmt).all()
     if not sessions:
         return []

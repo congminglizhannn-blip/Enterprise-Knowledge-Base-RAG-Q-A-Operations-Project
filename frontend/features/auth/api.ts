@@ -41,8 +41,9 @@ export async function listOrganizations(): Promise<OrganizationInfo[]> {
   });
 }
 
-export async function me(): Promise<AuthProfile> {
+export async function me(signal?: AbortSignal): Promise<AuthProfile> {
   return apiJson<AuthProfile>("/api/auth/me", {
+    signal,
     skipAuthRedirect: true,
   });
 }

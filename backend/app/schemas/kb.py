@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictBool
 
 from app.models.enums import KnowledgeBaseScope
 
@@ -19,7 +19,12 @@ class KnowledgeBaseUpdate(BaseModel):
     org_id: str | None = None
 
 
+class KnowledgeBaseStatusUpdate(BaseModel):
+    is_active: StrictBool
+
+
 class KnowledgeBaseRead(BaseModel):
+    is_active: bool = True
     id: str
     name: str
     description: str | None

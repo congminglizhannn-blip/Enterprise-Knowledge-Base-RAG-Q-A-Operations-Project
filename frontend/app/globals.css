@@ -1048,6 +1048,21 @@ tbody tr:nth-child(even) {
   background: #e6f3ff;
 }
 
+.citation-chunk {
+  display: block;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #cfe6ff;
+  color: #607084;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.citation-chunk > span {
+  display: block;
+  white-space: pre-wrap;
+}
+
 .empty-citation {
   padding: 18px;
   border: 1px dashed #cfe0f3;

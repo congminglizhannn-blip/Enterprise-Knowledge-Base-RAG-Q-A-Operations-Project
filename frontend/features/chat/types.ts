@@ -29,6 +29,7 @@ export type ChatSession = {
 };
 
 export type ChatSessionSummary = {
+  qa_round_count: number;
   id: string;
   knowledge_base_id: string;
   title: string;

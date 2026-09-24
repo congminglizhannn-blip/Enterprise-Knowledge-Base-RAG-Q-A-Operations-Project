@@ -39,6 +39,8 @@ def test_retriever_filters_vectors_and_keyword_fallback_by_org_id():
 
     vector_sql = str(db.statements[0])
     keyword_sql = str(db.statements[1])
+    assert "knowledge_bases.is_active IS true" in vector_sql
+    assert "knowledge_bases.is_active IS true" in keyword_sql
     assert "document_chunks.org_id" in vector_sql
     assert "documents.org_id" in vector_sql
     assert "document_chunks.org_id" in keyword_sql

@@ -253,6 +253,17 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         raise api_error(401, "UNAUTHORIZED", "用户名或密码错误")
     if not user.is_active:
         raise api_error(403, "USER_DISABLED", "用户已停用")
+    if payload.role != user.role:
+        write_audit_log(
+            db,
+            "auth.login.failed",
+            user=user,
+            ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            metadata={"reason": "ROLE_MISMATCH", "selected_role": payload.role},
+        )
+        db.commit()
+        raise api_error(403, "ROLE_MISMATCH", "所选角色与账号角色不一致，请选择正确的登录角色")
     create_auth_session(db, user, request, response)
     write_audit_log(
         db,

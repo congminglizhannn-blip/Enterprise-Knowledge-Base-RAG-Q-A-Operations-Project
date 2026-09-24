@@ -11,7 +11,7 @@ import type { Role } from "@/features/auth/types";
 export default function LoginRoute() {
   const router = useRouter();
   const auth = useAuth();
-  const [role, setRole] = useState<Role>("部门管理员");
+  const [role, setRole] = useState<Role>("普通用户");
   const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function LoginRoute() {
   async function handleLogin(username: string, password: string) {
     setLoginError("");
     try {
-      await auth.login(username, password);
+      await auth.login(username, password, role);
     } catch (error) {
       setLoginError(toFriendlyError(error, "账号或密码错误，请确认后重试。"));
     }

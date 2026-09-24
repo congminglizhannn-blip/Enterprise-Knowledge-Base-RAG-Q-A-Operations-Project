@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import Boolean, ForeignKey, String, Text, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -12,6 +12,7 @@ class KnowledgeBase(UUIDMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(160), index=True)
     description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true(), nullable=False)
     scope: Mapped[KnowledgeBaseScope] = mapped_column(value_enum(KnowledgeBaseScope, "knowledge_base_scope"), default=KnowledgeBaseScope.DEPARTMENT, index=True)
     target_id: Mapped[str | None] = mapped_column(String(36), index=True)
     org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)

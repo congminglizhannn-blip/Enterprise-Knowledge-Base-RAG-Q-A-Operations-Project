@@ -13,13 +13,15 @@ from app.models.enums import KnowledgeBaseScope, UserRole
 from app.models.knowledge_base import KnowledgeBase
 from app.models.organization import Organization
 from app.models.user import User
-from app.schemas.kb import KnowledgeBaseCreate, KnowledgeBaseRead, KnowledgeBaseUpdate
+from app.schemas.kb import KnowledgeBaseCreate, KnowledgeBaseRead, KnowledgeBaseUpdate, KnowledgeBaseStatusUpdate
 
 router = APIRouter()
 
 
 @router.get("", response_model=list[KnowledgeBaseRead])
-def list_knowledge_bases(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_knowledge_bases(current_user: User = Depends(get_current_user), db: Session = Depends(get_db), include_disabled: bool = False):
+    if include_disabled and current_user.role not in (UserRole.SUPER_ADMIN, UserRole.DEPT_ADMIN):
+        raise HTTPException(status_code=403, detail="仅管理员可查看禁用知识库")
     document_counts = (
         select(Document.knowledge_base_id, func.count(Document.id).label("document_count"))
         .group_by(Document.knowledge_base_id)
@@ -51,6 +53,13 @@ def list_knowledge_bases(current_user: User = Depends(get_current_user), db: Ses
                 (KnowledgeBase.scope == KnowledgeBaseScope.DEPARTMENT) & (KnowledgeBase.target_id == current_user.department_id),
             )
         )
+    if not include_disabled:
+        stmt = stmt.where(KnowledgeBase.is_active.is_(True))
+    elif current_user.role != UserRole.SUPER_ADMIN:
+        stmt = stmt.where(or_(
+            KnowledgeBase.is_active.is_(True),
+            (KnowledgeBase.scope == KnowledgeBaseScope.DEPARTMENT) & (KnowledgeBase.target_id == current_user.department_id),
+        ))
     rows = db.execute(stmt.order_by(KnowledgeBase.created_at.desc())).all()
     return [
         serialize_kb(kb, org_name, department_name, int(document_count), int(chunk_count))
@@ -127,19 +136,25 @@ def update_knowledge_base(
     return serialize_kb(kb, org.name, department.name, document_count, chunk_count)
 
 
-@router.delete("/{kb_id}", dependencies=[Depends(require_csrf_token)])
-def delete_knowledge_base(
+@router.patch("/{kb_id}/status", response_model=KnowledgeBaseRead, dependencies=[Depends(require_csrf_token)])
+def update_knowledge_base_status(
     kb_id: str,
+    payload: KnowledgeBaseStatusUpdate,
     current_user: User = Depends(require_department_admin),
     db: Session = Depends(get_db),
 ):
-    kb = get_manageable_kb(db, kb_id, current_user)
-    db.delete(kb)
+    kb = get_manageable_kb(db, kb_id, current_user, allow_disabled=True)
+    kb.is_active = payload.is_active
     db.commit()
-    return {"success": True}
+    db.refresh(kb)
+    org = db.get(Organization, kb.org_id)
+    department = db.get(Department, kb.department_id)
+    document_count = db.scalar(select(func.count(Document.id)).where(Document.knowledge_base_id == kb.id)) or 0
+    chunk_count = db.scalar(select(func.count(DocumentChunk.id)).where(DocumentChunk.knowledge_base_id == kb.id)) or 0
+    return serialize_kb(kb, org.name if org else None, department.name if department else None, document_count, chunk_count)
 
 
-def get_accessible_kb(db: Session, kb_id: str, user: User) -> KnowledgeBase:
+def get_accessible_kb(db: Session, kb_id: str, user: User, *, allow_disabled: bool = False) -> KnowledgeBase:
     try:
         UUID(kb_id)
     except ValueError as exc:
@@ -157,11 +172,13 @@ def get_accessible_kb(db: Session, kb_id: str, user: User) -> KnowledgeBase:
     kb = db.scalar(stmt)
     if not kb:
         raise HTTPException(status_code=404, detail="知识库不存在或无权限")
+    if not allow_disabled and not kb.is_active:
+        raise HTTPException(status_code=409, detail={"code": "KB_DISABLED", "message": "知识库已禁用，请联系管理员启用"})
     return kb
 
 
-def get_manageable_kb(db: Session, kb_id: str, user: User) -> KnowledgeBase:
-    kb = get_accessible_kb(db, kb_id, user)
+def get_manageable_kb(db: Session, kb_id: str, user: User, *, allow_disabled: bool = False) -> KnowledgeBase:
+    kb = get_accessible_kb(db, kb_id, user, allow_disabled=allow_disabled)
     if kb.scope == KnowledgeBaseScope.GLOBAL:
         if user.role == UserRole.SUPER_ADMIN:
             return kb
@@ -189,6 +206,7 @@ def serialize_kb(
         target_name = department_name
     return {
         "id": kb.id,
+        "is_active": kb.is_active,
         "name": kb.name,
         "description": kb.description,
         "scope": kb.scope,

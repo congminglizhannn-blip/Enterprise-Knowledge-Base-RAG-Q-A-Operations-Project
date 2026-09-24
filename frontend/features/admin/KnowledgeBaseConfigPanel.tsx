@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Database, Pencil, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Database, Pencil, RefreshCw, Search, Power } from "lucide-react";
 import {
   createKnowledgeBase,
-  deleteKnowledgeBase,
+  updateKnowledgeBaseStatus,
   listDepartments,
   listKnowledgeBases,
   listOrganizations,
@@ -33,6 +33,7 @@ export function KnowledgeBaseConfigPanel({ enabled, adminRole, onCreated }: Know
   const [keyword, setKeyword] = useState("");
   const [scopeFilter, setScopeFilter] = useState<"" | Scope>("");
   const [ownerFilter, setOwnerFilter] = useState("");
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingKb, setEditingKb] = useState<BackendKnowledgeBase | null>(null);
@@ -102,7 +103,7 @@ export function KnowledgeBaseConfigPanel({ enabled, adminRole, onCreated }: Know
 
   async function refresh() {
     try {
-      const [orgRows, kbRows] = await Promise.all([isSuperAdmin ? listOrganizations() : Promise.resolve([]), listKnowledgeBases()]);
+      const [orgRows, kbRows] = await Promise.all([isSuperAdmin ? listOrganizations() : Promise.resolve([]), listKnowledgeBases({ includeDisabled: true })]);
       setOrganizations(orgRows);
       setKnowledgeBases(kbRows);
       if (isSuperAdmin) {
@@ -219,16 +220,19 @@ export function KnowledgeBaseConfigPanel({ enabled, adminRole, onCreated }: Know
     }
   }
 
-  async function handleDelete(kb: BackendKnowledgeBase) {
-    const confirmed = window.confirm(`删除知识库「${kb.name}」将级联删除其下所有文档和向量数据，此操作不可恢复。是否继续？`);
-    if (!confirmed) return;
+  async function handleToggleStatus(kb: BackendKnowledgeBase) {
+    if (statusPendingId) return;
+    if (kb.is_active && !window.confirm(`确认禁用知识库「${kb.name}」？文档、向量和历史将保留，禁用期间无法上传、解析或发起新问答，可随时重新启用。`)) return;
+    setStatusPendingId(kb.id);
     try {
-      await deleteKnowledgeBase(kb.id);
+      await updateKnowledgeBaseStatus(kb.id, !kb.is_active);
       await refresh();
       await onCreated?.();
-      setNotice("知识库已删除。");
+      setNotice(kb.is_active ? "知识库已禁用，数据已保留。" : "知识库已启用。");
     } catch (error) {
-      setNotice(error instanceof ApiError ? error.message : "删除失败，请确认权限。");
+      setNotice(error instanceof ApiError ? error.message : "状态修改失败，请确认权限。");
+    } finally {
+      setStatusPendingId(null);
     }
   }
 
@@ -291,6 +295,7 @@ export function KnowledgeBaseConfigPanel({ enabled, adminRole, onCreated }: Know
               <option value="">全部归属</option>
               {ownerOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
+            {(keyword || scopeFilter || ownerFilter) && <button className="secondary-btn" type="button" onClick={() => { setKeyword(""); setScopeFilter(""); setOwnerFilter(""); }}>清除筛选</button>}
           </div>
           <div className="table-wrap">
             <table>
@@ -299,18 +304,19 @@ export function KnowledgeBaseConfigPanel({ enabled, adminRole, onCreated }: Know
                 {visibleKbs.length === 0 ? (
                   <tr><td colSpan={6}>暂无知识库</td></tr>
                 ) : visibleKbs.map((kb) => (
-                  <tr key={kb.id}>
+                  <tr key={kb.id} className={!kb.is_active ? "inactive-row" : ""}>
                     <td>
                       <strong>{kb.name}</strong>
+                      {!kb.is_active && <small className="table-subtext">已禁用</small>}
                       {kb.description && <small className="table-subtext">{kb.description}</small>}
                     </td>
-                    <td><span className={`scope-tag ${kb.scope ?? "department"}`}>{scopeLabel(kb.scope ?? "department")}</span></td>
-                    <td>{ownerLabel(kb)}</td>
+                    <td><button className="link-cell" aria-pressed={scopeFilter === (kb.scope ?? "department")} onClick={() => setScopeFilter(scopeFilter === (kb.scope ?? "department") ? "" : (kb.scope ?? "department"))}><span className={`scope-tag ${kb.scope ?? "department"}`}>{scopeLabel(kb.scope ?? "department")}</span></button></td>
+                    <td><button className="link-cell" aria-pressed={ownerFilter === ownerKey(kb)} onClick={() => setOwnerFilter(ownerFilter === ownerKey(kb) ? "" : ownerKey(kb))}>{ownerLabel(kb)}</button></td>
                     <td>{kb.document_count ?? 0}</td>
                     <td>{kb.chunk_count ?? 0}</td>
                     <td>
-                      <button className="table-action" onClick={() => openEdit(kb)}><Pencil size={14} />编辑</button>
-                      <button className="table-action danger" onClick={() => handleDelete(kb)}><Trash2 size={14} />删除</button>
+                      <button className="table-action" disabled={!kb.is_active || (!isSuperAdmin && kb.scope !== "department")} onClick={() => openEdit(kb)}><Pencil size={14} />编辑</button>
+                      <button className={`table-action${kb.is_active ? " danger" : ""}`} disabled={!!statusPendingId || (!isSuperAdmin && kb.scope !== "department")} onClick={() => handleToggleStatus(kb)}><Power size={14} />{kb.is_active ? "禁用" : "启用"}</button>
                     </td>
                   </tr>
                 ))}

@@ -22,6 +22,10 @@ class ChatSessionRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ChatSessionListRead(ChatSessionRead):
+    qa_round_count: int
+
+
 class ChatMessageRead(BaseModel):
     id: str
     session_id: str

@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.knowledge_bases import get_accessible_kb
 from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.models.chat import ChatMessage, ChatSession
-from app.models.enums import UserRole
+from app.models.enums import MessageRole, UserRole
 from app.models.user import User
-from app.schemas.session import ChatSessionCreate, ChatSessionDetail, ChatSessionRead
+from app.schemas.session import ChatSessionCreate, ChatSessionDetail, ChatSessionRead, ChatSessionListRead
 
 router = APIRouter()
 
@@ -25,14 +25,33 @@ def get_accessible_session(db: Session, session_id: str, user: User) -> ChatSess
     return session
 
 
-@router.get("", response_model=list[ChatSessionRead])
+@router.get("", response_model=list[ChatSessionListRead])
 def list_sessions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     stmt = select(ChatSession).order_by(ChatSession.updated_at.desc()).limit(50)
     if current_user.role == UserRole.SUPER_ADMIN:
         stmt = stmt.where(or_(ChatSession.org_id == current_user.org_id, ChatSession.user_id == current_user.id))
     else:
         stmt = stmt.where(ChatSession.org_id == current_user.org_id, ChatSession.user_id == current_user.id)
-    return db.scalars(stmt).all()
+    sessions = db.scalars(stmt).all()
+    if not sessions:
+        return []
+    # Chat writes the question and answer in one transaction after streaming ends.
+    # Count saved answers, excluding pending questions and other message roles.
+    counts = dict(db.execute(
+        select(ChatMessage.session_id, func.count(ChatMessage.id))
+        .where(
+            ChatMessage.session_id.in_([session.id for session in sessions]),
+            ChatMessage.role == MessageRole.ASSISTANT,
+        )
+        .group_by(ChatMessage.session_id)
+    ).all())
+    return [
+        ChatSessionListRead(
+            **ChatSessionRead.model_validate(session).model_dump(),
+            qa_round_count=counts.get(session.id, 0),
+        )
+        for session in sessions
+    ]
 
 
 @router.post("", response_model=ChatSessionRead)

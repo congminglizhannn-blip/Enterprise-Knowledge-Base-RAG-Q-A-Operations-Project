@@ -11,6 +11,7 @@ import { ChatPage } from "@/features/chat/ChatPage";
 import type { ChatMessage, ChatSessionSummary, CitationRow } from "@/features/chat/types";
 import type { BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
 import { apiFetch } from "@/lib/apiClient";
+import { toFriendlyError } from "@/lib/errors";
 import { ROUTED_VIEWS, type BusinessView } from "@/lib/routing";
 import { ApiError, type AuthenticatedFetch } from "@/types/common";
 
@@ -53,6 +54,7 @@ function ChatPageContent() {
   const [citations, setCitations] = useState<CitationRow[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
+  const [loadNotice, setLoadNotice] = useState("");
 
   const handleUnauthorized = useCallback(() => {
     router.replace("/login");
@@ -71,27 +73,36 @@ function ChatPageContent() {
 
   useEffect(() => {
     if (auth.status !== "authenticated") return;
+    let cancelled = false;
 
     async function load() {
-      try {
-        const kbsResponse = await authenticatedFetch("/api/kbs");
-        const kbsRaw: BackendKnowledgeBase[] = await kbsResponse.json();
-        const kbs = kbsRaw.map(mapKnowledgeBase);
+      const [kbsResult, sessionsResult] = await Promise.allSettled([
+        authenticatedFetch("/api/kbs").then((response) => response.json() as Promise<BackendKnowledgeBase[]>),
+        authenticatedFetch("/api/sessions").then((response) => response.json() as Promise<ChatSessionSummary[]>),
+      ]);
+      if (cancelled) return;
+      const errors: string[] = [];
+      if (kbsResult.status === "fulfilled") {
+        const kbs = kbsResult.value.map(mapKnowledgeBase);
         const enrichedKbs = withKbStats(kbs, []);
         setAvailableKbs(enrichedKbs);
         setSelectedKb(enrichedKbs.find((kb) => kb.id === kbId) ?? enrichedKbs[0] ?? null);
 
-        const sessionsResponse = await authenticatedFetch("/api/sessions");
-        const sessions: ChatSessionSummary[] = await sessionsResponse.json();
-        setChatSessions(sessions);
-      } catch (error) {
-        if (!(error instanceof ApiError && error.status === 401)) {
-          console.error(error);
-        }
+      } else {
+        setAvailableKbs([]);
+        setSelectedKb(null);
+        errors.push(`知识库加载失败：${toFriendlyError(kbsResult.reason, "请稍后刷新重试。")}`);
       }
+      if (sessionsResult.status === "fulfilled") {
+        setChatSessions(sessionsResult.value);
+      } else {
+        errors.push(`历史会话加载失败：${toFriendlyError(sessionsResult.reason, "请稍后刷新重试。")}`);
+      }
+      setLoadNotice(errors.join("；"));
     }
 
     void load();
+    return () => { cancelled = true; };
   }, [auth.status, authenticatedFetch, kbId]);
 
   const handleNavigate = useCallback((view: BusinessView) => {
@@ -124,6 +135,7 @@ function ChatPageContent() {
         departmentName={auth.department?.name ?? "未识别部门"}
         userName={auth.user?.full_name || auth.user?.username || "当前用户"}
         onLogout={handleLogout}
+        notice={loadNotice}
       >
         <ChatPage
           selectedKb={selectedKb}

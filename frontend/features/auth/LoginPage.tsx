@@ -12,8 +12,8 @@ type LoginPageProps = {
 };
 
 export function LoginPage({ onAuthenticated, onGoRegister, role, setRole, loginError }: LoginPageProps) {
-  const [username, setUsername] = useState("Admin");
-  const [password, setPassword] = useState("7777");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   return (
     <main className="login-screen">
@@ -38,7 +38,7 @@ export function LoginPage({ onAuthenticated, onGoRegister, role, setRole, loginE
       <section className="login-card">
         <LockKeyhole className="login-mark" size={34} />
         <h2>登录工作台</h2>
-        <p>选择演示角色后进入前端业务原型。</p>
+        <p>请输入账号密码，并选择账号对应的角色。</p>
         <label>
           账号
           <input value={username} onChange={(event) => setUsername(event.target.value)} />
@@ -48,7 +48,7 @@ export function LoginPage({ onAuthenticated, onGoRegister, role, setRole, loginE
           <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
         </label>
         <label>
-          演示角色
+          登录角色
           <select value={role} onChange={(event) => setRole(event.target.value as "超级管理员" | "部门管理员" | "普通用户")}>
             <option>超级管理员</option>
             <option>部门管理员</option>

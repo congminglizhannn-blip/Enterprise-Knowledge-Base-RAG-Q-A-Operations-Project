@@ -3,11 +3,10 @@
 import { ChevronDown, Search } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
-import type { ChatMessage, ChatSessionSummary } from "./types";
+import type { ChatSessionSummary } from "./types";
 
 export type HistoryPageProps = {
   sessions: ChatSessionSummary[];
-  messages: ChatMessage[];
   setNotice: (notice: string) => void;
 };
 
@@ -18,7 +17,7 @@ function formatTime(value?: string) {
   return date.toLocaleString("zh-CN", { hour12: false });
 }
 
-export function HistoryPage({ sessions, messages, setNotice }: HistoryPageProps) {
+export function HistoryPage({ sessions, setNotice }: HistoryPageProps) {
   return (
     <section className="content-stack">
       <div className="section-toolbar">
@@ -27,9 +26,9 @@ export function HistoryPage({ sessions, messages, setNotice }: HistoryPageProps)
       </div>
       <Card title="问答历史与审计">
         <DataTable
-          headers={["会话标题", "知识库ID", "更新时间", "当前载入消息数"]}
+          headers={["会话标题", "知识库ID", "更新时间", "问答轮数"]}
           rows={sessions.length > 0
-            ? sessions.map((session) => [session.title, session.knowledge_base_id, formatTime(session.updated_at), String(messages.length)])
+            ? sessions.map((session) => [session.title, session.knowledge_base_id, formatTime(session.updated_at), session.qa_round_count == null ? "-" : String(session.qa_round_count)])
             : [["暂无历史会话", "-", "-", "0"]]}
         />
       </Card>

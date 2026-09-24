@@ -1,8 +1,8 @@
 import { apiFetch, apiJson } from "@/lib/apiClient";
 import type { BackendDocument, BackendKnowledgeBase, DepartmentInfo, DocumentDetail, OrganizationInfo } from "./types";
 
-export function listKnowledgeBases() {
-  return apiJson<BackendKnowledgeBase[]>("/api/kbs");
+export function listKnowledgeBases(options?: { includeDisabled?: boolean }) {
+  return apiJson<BackendKnowledgeBase[]>(options?.includeDisabled ? "/api/kbs?include_disabled=true" : "/api/kbs");
 }
 
 export function listOrganizations(options?: { includeArchived?: boolean }) {
@@ -85,8 +85,12 @@ export function updateKnowledgeBase(
   });
 }
 
-export function deleteKnowledgeBase(knowledgeBaseId: string) {
-  return apiJson<{ success: boolean }>(`/api/kbs/${knowledgeBaseId}`, { method: "DELETE" });
+export function updateKnowledgeBaseStatus(knowledgeBaseId: string, isActive: boolean) {
+  return apiJson<BackendKnowledgeBase>(`/api/kbs/${knowledgeBaseId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_active: isActive }),
+  });
 }
 
 export function deleteDocument(documentId: string) {

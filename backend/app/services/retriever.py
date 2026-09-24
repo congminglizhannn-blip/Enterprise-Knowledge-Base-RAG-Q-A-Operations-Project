@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.chunk import DocumentChunk
 from app.models.document import Document
 from app.models.enums import KnowledgeBaseScope
+from app.models.knowledge_base import KnowledgeBase
 from app.services.embedding import EmbeddingService
 
 
@@ -46,6 +47,7 @@ class RetrieverService:
     ) -> list[RetrievedChunk]:
         query_embedding = self.embedding_service.embed_query(question)
         filters = [
+            KnowledgeBase.is_active.is_(True),
             DocumentChunk.knowledge_base_id == knowledge_base_id,
             Document.knowledge_base_id == knowledge_base_id,
         ]
@@ -60,6 +62,7 @@ class RetrieverService:
         vector_stmt = (
             select(DocumentChunk, Document.file_name, DocumentChunk.embedding.cosine_distance(query_embedding).label("score"))
             .join(Document, Document.id == DocumentChunk.document_id)
+            .join(KnowledgeBase, KnowledgeBase.id == DocumentChunk.knowledge_base_id)
             .where(*filters)
             .order_by("score")
             .limit(limit)
@@ -80,6 +83,7 @@ class RetrieverService:
         keyword_stmt = (
             select(DocumentChunk, Document.file_name)
             .join(Document, Document.id == DocumentChunk.document_id)
+            .join(KnowledgeBase, KnowledgeBase.id == DocumentChunk.knowledge_base_id)
             .where(*filters, DocumentChunk.content.ilike(f"%{question[:20]}%"))
             .limit(limit)
         )

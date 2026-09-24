@@ -3,7 +3,7 @@
 ## Auth
 
 - `POST /api/auth/register`：注册账号；可创建新组织，或使用邀请码加入已有组织；成功后创建服务端 session，并通过 `Set-Cookie: session_token=...` 写入 httpOnly cookie。
-- `POST /api/auth/login`：账号密码登录；成功后创建服务端 session，并通过 `Set-Cookie: session_token=...` 写入 httpOnly cookie。兼容期仍返回 Access Token 和 Refresh Token，旧前端可继续使用 Bearer Token。
+- `POST /api/auth/login`：请求体必填 `username`、`password`、`role`（`super_admin` / `dept_admin` / `user`）。账号密码校验通过后，所选角色必须与数据库实际角色一致，否则返回 403 / `ROLE_MISMATCH`，不创建 session、不签发 token 或 cookie；缺失或非法 role 返回 422。成功后创建服务端 session，并通过 `Set-Cookie: session_token=...` 写入 httpOnly cookie，同时返回 Access Token 和 Refresh Token。权限始终取自数据库角色；旧登录调用方也必须补传 role。
 - `POST /api/auth/refresh`：使用 Refresh Token 换取新的 Access Token 和 Refresh Token。
 - `POST /api/auth/logout`：幂等登出；撤销当前 cookie session 并清除 `session_token` cookie。即使 session 已过期或不存在，也返回 `{ "success": true }`。
 - `GET /api/auth/me`：获取当前用户信息。
@@ -37,7 +37,10 @@
 
 ## Knowledge Bases
 
-- `GET /api/kbs`：按当前用户权限列出知识库。
+- `GET /api/kbs`：按当前用户权限列出启用的知识库，返回 `is_active`。管理员可传 `include_disabled=true`；超级管理员可查看全部，部门管理员仅额外看到本部门可管理的禁用知识库，普通用户传此参数返回 403。文档及 Chunk 数统计包含保留的数据。
+- `PATCH /api/kbs/{kb_id}/status`：管理员设置启用状态，请求体 `{"is_active": false}`（禁用）或 `{"is_active": true}`（启用），必须是 JSON 布尔值，需要 CSRF 校验。返回完整知识库信息，重复设置同一状态幂等。全局/组织级仅超级管理员可操作，部门级允许本部门管理员操作。
+- 知识库禁用保留文档、向量和历史；业务列表隐藏禁用库，直接读取文档、上传、解析、删除文档、新建会话和新问答返回 409 / `KB_DISABLED`，向量及关键词检索均排除禁用库。历史会话仍按原权限可读；已经开始的请求不强制中断。重新启用后原数据恢复可用。
+- `PUT /api/kbs/{kb_id}`：编辑启用知识库；禁用状态需先启用再编辑。原 `DELETE /api/kbs/{kb_id}` 已移除（返回 405），不再提供知识库级联删除入口。
 - `POST /api/kbs`：管理员创建知识库。
 
 ## Documents
@@ -68,7 +71,7 @@
 
 ## Sessions
 
-- `GET /api/sessions`：按当前用户列出最近 50 条会话。
+- `GET /api/sessions`：按当前用户权限列出最近 50 条会话，每条返回 `qa_round_count`（问答轮数）。当前问答链路在流结束后将提问和回答一起提交，因此按该会话已保存的 assistant 消息数统计：一问一答为 1 轮，仅有提问、尚未保存回答不计入，空会话为 0。统计仅针对本次权限过滤后返回的会话，旧会话实时统计，无需回填或数据库迁移。
 - `POST /api/sessions`：创建会话，请求体包含 `knowledge_base_id` 和可选 `title`。
 - `GET /api/sessions/{session_id}`：读取会话详情和消息列表。
 - `DELETE /api/sessions/{session_id}`：删除当前用户可访问的会话及其消息。

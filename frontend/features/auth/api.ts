@@ -9,13 +9,19 @@ import type {
   LoginResponse,
   OrganizationInfo,
   RegisterRequest,
+  Role,
 } from "./types";
 
-export async function login(username: string, password: string): Promise<LoginResponse> {
+export async function login(username: string, password: string, role: Role): Promise<LoginResponse> {
+  const backendRoles: Record<Role, InviteRole> = {
+    超级管理员: "super_admin",
+    部门管理员: "dept_admin",
+    普通用户: "user",
+  };
   return apiJson<LoginResponse>("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, role: backendRoles[role] }),
     skipCsrf: true,
   });
 }

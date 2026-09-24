@@ -9,7 +9,6 @@ import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
 import { HistoryPage } from "@/features/chat/HistoryPage";
 import type {
-  ChatMessage,
   ChatSessionSummary,
 } from "@/features/chat/types";
 import { apiFetch } from "@/lib/apiClient";
@@ -22,7 +21,6 @@ function HistoryPageContent() {
   const role: Role = auth.user ? mapBackendRole(auth.user.role) : "普通用户";
 
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notice, setNotice] = useState("");
 
   const handleUnauthorized = useCallback(() => {
@@ -69,20 +67,6 @@ function HistoryPageContent() {
     void load();
   }, [auth.status, authenticatedFetch]);
 
-  useEffect(() => {
-    try {
-      const cached = window.localStorage.getItem("active_chat_messages");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-          setMessages(parsed);
-        }
-      }
-    } catch {
-      // 解析失败保持 []
-    }
-  }, []);
-
   return (
     <AuthGate>
       <AppShell
@@ -98,7 +82,6 @@ function HistoryPageContent() {
       >
         <HistoryPage
           sessions={chatSessions}
-          messages={messages}
           setNotice={setNotice}
         />
       </AppShell>

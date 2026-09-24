@@ -1,5 +1,6 @@
 import { FileText } from "lucide-react";
 import type { Citation } from "./types";
+import { groupCitationsByDocument } from "./citations";
 
 type Props = {
   citations: Citation[];
@@ -14,6 +15,7 @@ export function CitationPanel({
   disabled = false,
   onOpenDocument,
 }: Props) {
+  const documents = groupCitationsByDocument(citations);
   return (
     <aside className="citation-panel">
       <h3>引用来源</h3>
@@ -24,16 +26,22 @@ export function CitationPanel({
           <p>提交问题并完成 RAG 召回后，这里才展示命中的文档名称和原文片段。</p>
         </div>
       ) : citations.length > 0 ? (
-        citations.map((citation) => (
+        documents.map(({ key, source, chunks }) => (
           <button
             className="citation-card"
-            disabled={disabled}
-            key={citation.chunk_id ?? `${citation.document_name}-${citation.content_preview}`}
-            onClick={() => onOpenDocument(citation)}
+            disabled={disabled || !source.document_id}
+            key={key}
+            onClick={() => onOpenDocument(source)}
           >
             <FileText size={18} />
-            <strong>{citation.document_name}</strong>
-            <p>{citation.content_preview}</p>
+            <strong>{source.document_name}</strong>
+            <small>本次命中 {chunks.length} 个片段</small>
+            {chunks.map((chunk, index) => (
+              <span className="citation-chunk" key={chunk.chunk_id ?? chunk.content_preview}>
+                <small title={chunk.chunk_id}>引用片段 {index + 1}</small>
+                <span>{chunk.content_preview}</span>
+              </span>
+            ))}
           </button>
         ))
       ) : (

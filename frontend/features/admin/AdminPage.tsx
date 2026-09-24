@@ -53,7 +53,9 @@ export function AdminPage({
   const [searchKeyword, setSearchKeyword] = useState("");
   const [userSearchField, setUserSearchField] = useState<"all" | "username" | "role" | "department" | "status">("all");
   const [departmentSearchKeyword, setDepartmentSearchKeyword] = useState("");
-  const [departmentSearchField, setDepartmentSearchField] = useState<"all" | "name" | "id" | "org" | "description">("all");
+  const [departmentSearchField, setDepartmentSearchField] = useState<"all" | "name" | "id" | "org" | "description" | "status">("all");
+  const [departmentOrgFilter, setDepartmentOrgFilter] = useState("");
+  const [departmentStatusFilter, setDepartmentStatusFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [editingUser, setEditingUser] = useState<AdminUserRow | null>(null);
@@ -84,13 +86,16 @@ export function AdminPage({
   const filteredDepartments = departments.filter((department) => {
     const keyword = departmentSearchKeyword.trim().toLowerCase();
     const searchableValues: Record<typeof departmentSearchField, string> = {
-      all: [department.name, department.id, department.org_id, department.description || ""].join(" "),
+      all: [department.name, department.id, department.org_id, organizationNameById.get(department.org_id) || "", department.description || "", department.is_archived ? "已归档" : "启用"].join(" "),
       name: department.name,
       id: department.id,
-      org: department.org_id,
+      org: `${organizationNameById.get(department.org_id) || ""} ${department.org_id}`,
       description: department.description || "",
+      status: department.is_archived ? "已归档" : "启用",
     };
-    return !keyword || searchableValues[departmentSearchField].toLowerCase().includes(keyword);
+    return (!keyword || searchableValues[departmentSearchField].toLowerCase().includes(keyword))
+      && (!departmentOrgFilter || department.org_id === departmentOrgFilter)
+      && (!departmentStatusFilter || (department.is_archived ? "archived" : "active") === departmentStatusFilter);
   });
 
   useEffect(() => {
@@ -228,6 +233,8 @@ export function AdminPage({
   function resetDepartmentFilters() {
     setDepartmentSearchKeyword("");
     setDepartmentSearchField("all");
+    setDepartmentOrgFilter("");
+    setDepartmentStatusFilter("");
   }
 
   const permissionBoundary = (
@@ -266,7 +273,7 @@ export function AdminPage({
       </div>
       {activeTab === "knowledge" ? (
         <div className="two-col admin-management-layout">
-          <KnowledgeBaseConfigPanel key={adminDataVersion} enabled={role !== "普通用户"} adminRole={role} onCreated={async () => {
+          <KnowledgeBaseConfigPanel enabled={role !== "普通用户"} adminRole={role} onCreated={async () => {
             await refreshDocuments();
             setAdminDataVersion((version) => version + 1);
           }} />
@@ -318,11 +325,12 @@ export function AdminPage({
                   <option value="all">全部字段</option>
                   <option value="name">部门名称</option>
                   <option value="id">部门ID</option>
-                  <option value="org">组织ID</option>
+                  <option value="org">组织</option>
                   <option value="description">说明</option>
+                  <option value="status">状态</option>
                 </select>
                 <div className="search-box"><Search size={16} /><input value={departmentSearchKeyword} onChange={(event) => setDepartmentSearchKeyword(event.target.value)} placeholder="输入筛选关键词" /></div>
-                {(departmentSearchKeyword || departmentSearchField !== "all") && <button className="secondary-btn" onClick={resetDepartmentFilters}>清除筛选</button>}
+                {(departmentSearchKeyword || departmentSearchField !== "all" || departmentOrgFilter || departmentStatusFilter) && <button className="secondary-btn" onClick={resetDepartmentFilters}>清除筛选</button>}
                 <button className="primary-btn small" disabled={!isSuperAdmin} onClick={openCreateDepartment}>新建部门</button>
               </div>
               <div className="table-wrap">
@@ -337,9 +345,9 @@ export function AdminPage({
                           <strong>{department.name}</strong>
                           <small className="table-subtext">{department.id}</small>
                         </td>
-                        <td>{organizationNameById.get(department.org_id) || department.org_id}</td>
+                        <td><button className="link-cell" aria-pressed={departmentOrgFilter === department.org_id} onClick={() => setDepartmentOrgFilter(departmentOrgFilter === department.org_id ? "" : department.org_id)}>{organizationNameById.get(department.org_id) || department.org_id}</button></td>
                         <td>{department.description || "-"}</td>
-                        <td>{department.is_archived ? "已归档" : "启用"}</td>
+                        <td><button className="link-cell" aria-pressed={departmentStatusFilter === (department.is_archived ? "archived" : "active")} onClick={() => { const value = department.is_archived ? "archived" : "active"; setDepartmentStatusFilter(departmentStatusFilter === value ? "" : value); }}>{department.is_archived ? "已归档" : "启用"}</button></td>
                         <td>
                           <button className="table-action" disabled={!isSuperAdmin || department.is_archived} onClick={() => openEditDepartment(department)}>编辑</button>
                           {department.is_archived ? (

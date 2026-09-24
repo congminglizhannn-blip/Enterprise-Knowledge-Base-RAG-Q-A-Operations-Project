@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useEffect, useMemo, useReducer } fro
 import { ApiError } from "@/types/common";
 import { clearCsrfToken, setOnUnauthenticated } from "@/lib/apiClient";
 import * as authApi from "./api";
-import type { AuthProfile, AuthStatus, ChangePasswordRequest, LoginResponse, RegisterRequest } from "./types";
+import type { AuthProfile, AuthStatus, ChangePasswordRequest, LoginResponse, RegisterRequest, Role } from "./types";
 
 type AuthState = AuthProfile & {
   status: AuthStatus;
@@ -26,7 +26,7 @@ type AuthAction =
 
 type AuthContextValue = AuthState & {
   mustChangePassword: boolean;
-  login: (username: string, password: string) => Promise<LoginResponse>;
+  login: (username: string, password: string, role: Role) => Promise<LoginResponse>;
   register: (payload: RegisterRequest) => Promise<LoginResponse>;
   changePassword: (payload: ChangePasswordRequest) => Promise<LoginResponse>;
   logout: () => Promise<void>;
@@ -129,8 +129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => setOnUnauthenticated(null);
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const response = await authApi.login(username, password);
+  const login = useCallback(async (username: string, password: string, role: Role) => {
+    const response = await authApi.login(username, password, role);
     clearCsrfToken();
     dispatch({ type: "AUTH_SUCCESS", payload: response, accessToken: response.access_token });
     void prefetchCsrf();

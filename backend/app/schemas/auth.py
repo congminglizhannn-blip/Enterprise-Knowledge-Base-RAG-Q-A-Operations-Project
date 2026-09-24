@@ -8,6 +8,7 @@ from app.models.enums import UserRole
 class LoginRequest(BaseModel):
     username: str
     password: str
+    role: UserRole
 
 
 class RegisterRequest(BaseModel):

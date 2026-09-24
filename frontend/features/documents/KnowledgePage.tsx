@@ -98,7 +98,7 @@ export function KnowledgePage({
       <div className="section-toolbar">
         <div className="search-box"><Search size={18} /><input placeholder="搜索知识库名称、部门或文档" /></div>
         <div className="toolbar-actions">
-          <button className="secondary-btn" onClick={refreshDocuments}>刷新知识库</button>
+          <button className="secondary-btn" onClick={() => { void refreshDocuments(); }}>刷新知识库</button>
         </div>
       </div>
       <div className="kb-grid">

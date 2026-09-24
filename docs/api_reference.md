@@ -45,7 +45,7 @@
 
 ## Documents
 
-- `GET /api/documents?knowledge_base_id=...`：按知识库列出文档。
+- `GET /api/documents?knowledge_base_id=...`：按知识库列出文档，返回顺序为 `created_at desc, id desc`，保证同一时间戳下顺序稳定。
 - `GET /api/documents/{document_id}`：查看文档详情和前 8 个 chunk 预览。
 - `POST /api/documents/{document_id}/parse`：手动触发文档解析、分块、本地 Embedding 和向量入库。
 - `DELETE /api/documents/{document_id}`：删除文档并级联删除 chunk 和向量。

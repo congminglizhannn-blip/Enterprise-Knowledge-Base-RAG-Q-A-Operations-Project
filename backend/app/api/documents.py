@@ -25,7 +25,7 @@ def list_documents(knowledge_base_id: str, current_user: User = Depends(get_curr
         .where(
             Document.knowledge_base_id == kb.id,
         )
-        .order_by(Document.created_at.desc())
+        .order_by(Document.created_at.desc(), Document.id.desc())
     ).all()
     return [
         DocumentRead.model_validate({

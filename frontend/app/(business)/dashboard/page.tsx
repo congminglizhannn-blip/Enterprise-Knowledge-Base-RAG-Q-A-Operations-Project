@@ -6,6 +6,7 @@ import { useAuth } from "@/features/auth/hooks";
 import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
 import type { ChatSessionSummary } from "@/features/chat/types";
+import { sortUploadRows } from "@/features/documents/documentRows";
 import { Dashboard } from "@/features/dashboard/Dashboard";
 import type {
   BackendDocument,
@@ -61,6 +62,7 @@ function mapDocument(document: BackendDocument, kbs: KnowledgeBase[]): UploadRow
     chunks: document.chunk_count ?? 0,
     owner: document.uploader_name ?? document.uploaded_by ?? "未知用户",
     time: formatTime(document.created_at),
+    createdAt: document.created_at,
   };
 }
 
@@ -118,7 +120,7 @@ function DashboardPageContent() {
           return documents.map((document) => mapDocument(document, kbs));
         });
         const results = await Promise.allSettled(documentRequests);
-        const rows = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+        const rows = sortUploadRows(results.flatMap((result) => result.status === "fulfilled" ? result.value : []));
         const failedCount = results.filter((result) => result.status === "rejected").length;
 
         setAvailableKbs(withKbStats(kbs, rows));

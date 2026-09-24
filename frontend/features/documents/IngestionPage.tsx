@@ -3,6 +3,7 @@ import { UploadCloud } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ApiError } from "@/types/common";
 import { deleteDocument, parseDocument, uploadFile, uploadLink } from "./api";
+import { sortUploadRows } from "./documentRows";
 import { DocumentTable } from "./DocumentTable";
 import type { KnowledgeBase, UploadRow } from "./types";
 
@@ -26,6 +27,13 @@ function detectDisplayType(fileName: string) {
 function makeTime() {
   const now = new Date();
   return `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+function formatDocumentTime(value?: string) {
+  if (!value) return makeTime();
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return makeTime();
+  return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
 const NETWORK_ERROR_MESSAGE = "网络异常，请检查连接后重试。";
@@ -120,7 +128,7 @@ export function IngestionPage({
       if (mode === "file") {
         for (const file of selectedFiles) {
           const document = await uploadFile(targetKbId, file);
-          setDocumentRows((current) => [{
+          setDocumentRows((current) => sortUploadRows([{
             id: document.id,
             kbId: document.knowledge_base_id,
             name: document.file_name,
@@ -129,13 +137,14 @@ export function IngestionPage({
             status: "待解析",
             chunks: document.chunk_count ?? 0,
             owner: "当前用户",
-            time: makeTime(),
-          }, ...current]);
+            time: formatDocumentTime(document.created_at),
+            createdAt: document.created_at,
+          }, ...current]));
         }
         setSelectedFiles([]);
       } else {
         const document = await uploadLink(targetKbId, linkUrl.trim());
-        setDocumentRows((current) => [{
+        setDocumentRows((current) => sortUploadRows([{
           id: document.id,
           kbId: document.knowledge_base_id,
           name: document.file_name ?? "公开链接",
@@ -144,8 +153,9 @@ export function IngestionPage({
           status: "待解析",
           chunks: document.chunk_count ?? 0,
           owner: "当前用户",
-          time: makeTime(),
-        }, ...current]);
+          time: formatDocumentTime(document.created_at),
+          createdAt: document.created_at,
+        }, ...current]));
         setLinkUrl("");
       }
       showToast("上传完成，请在下方点击解析");

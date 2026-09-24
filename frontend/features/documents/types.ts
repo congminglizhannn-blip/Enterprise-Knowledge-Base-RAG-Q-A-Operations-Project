@@ -20,6 +20,7 @@ export type UploadRow = {
   chunks: number;
   owner: string;
   time: string;
+  createdAt?: string;
 };
 
 export type DocumentDetail = {

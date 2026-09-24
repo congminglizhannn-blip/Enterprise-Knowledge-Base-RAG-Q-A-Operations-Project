@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks";
 import type { Role } from "@/features/auth/types";
 import { mapBackendRole } from "@/features/auth/utils";
+import { sortUploadRows } from "@/features/documents/documentRows";
 import { IngestionPage } from "@/features/documents/IngestionPage";
 import type { BackendDocument, BackendKnowledgeBase, KnowledgeBase, UploadRow } from "@/features/documents/types";
 import { apiFetch, clearReadCache } from "@/lib/apiClient";
@@ -56,6 +57,7 @@ function mapDocument(document: BackendDocument, kbs: KnowledgeBase[]): UploadRow
     chunks: document.chunk_count ?? 0,
     owner: document.uploader_name ?? document.uploaded_by ?? "未知用户",
     time: formatTime(document.created_at),
+    createdAt: document.created_at,
   };
 }
 
@@ -113,11 +115,11 @@ function IngestionPageContent() {
 
     if (!options.tolerateFailures) {
       const lists = await Promise.all(requests);
-      return { rows: lists.flat(), failedCount: 0 };
+      return { rows: sortUploadRows(lists.flat()), failedCount: 0 };
     }
 
     const results = await Promise.allSettled(requests);
-    const rows = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+    const rows = sortUploadRows(results.flatMap((result) => result.status === "fulfilled" ? result.value : []));
     const failedCount = results.filter((result) => result.status === "rejected").length;
     return { rows, failedCount };
   }, [authenticatedFetch]);

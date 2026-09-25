@@ -309,6 +309,10 @@ https://uselink.app/@lcm/link-update-for-enterprise-rag-q-a-system-30gg672b
 
 ## 业务流程
 ### 0.整体业务流程图
+
+<details>
+<summary>点击展开查看整体业务流程图</summary>
+
 ```mermaid
 flowchart TD
   Start([用户进入系统]) --> Auth{登录态是否有效}
@@ -380,7 +384,7 @@ flowchart TD
   Eval --> RagCases[RAG 最小测试样例]
   Eval --> Checklist[验收清单]
 ```
-
+</details>
 
 ### 1. 登录与权限
 

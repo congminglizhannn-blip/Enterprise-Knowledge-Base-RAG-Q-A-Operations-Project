@@ -76,6 +76,7 @@ Win + R -> 输入 sysdm.cpl -> 高级 -> 环境变量
 建议在“用户变量”的 `Path` 中追加对应软件的 `bin` 或可执行文件目录。修改后需要重启 PowerShell。
 
 本章节大概安装如下路径进行：数据库→后端→前端
+
 ![章节路径](screenshot/chapter.png)
 
 #### 2.2 （数据库）Docker 数据库启动

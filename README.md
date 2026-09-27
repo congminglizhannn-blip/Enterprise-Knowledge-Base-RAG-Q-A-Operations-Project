@@ -303,10 +303,15 @@ docker compose up --build
 
 ## 系统网页链接
 
-本项目通过 ngrok 将本地前端页面临时暴露为公网演示地址，预计2026.09-2027.05节假日除外的工作日 每日早上在如下链接网页内更新系统链接
+本项目通过 ngrok 将本地前端页面临时暴露为公网演示地址，预计2026.09-2027.05节假日除外的工作日 每日在如下链接可打开访问系统，可以使用
 ，链接可访问的时间为：8:00~23:00
 
-https://uselink.app/@lcm/link-update-for-enterprise-rag-q-a-system-30gg672b
+ **https://encircle-crudely-rinsing.ngrok-free.dev**
+
+- 关于系统的初始账户，请参考 [2.3.4 导入数据库演示数据 (2)历史数据内的已创建账户](#2历史数据内的已创建账户)。
+- 进入时候因为是使用的ngrok内网穿透，会有如下默认提示，点击visit即可：
+![访问提示](screenshot/visit.jpg)
+
 
 ## 业务流程
 ### 0.整体业务流程图

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Layers3, LockKeyhole, MessageSquareText, ShieldCheck, UploadCloud } from "lucide-react";
+import { Eye, EyeOff, Layers3, LockKeyhole, MessageSquareText, ShieldCheck, UploadCloud } from "lucide-react";
 
 type LoginPageProps = {
   onAuthenticated: (username: string, password: string) => Promise<void>;
@@ -14,6 +14,7 @@ type LoginPageProps = {
 export function LoginPage({ onAuthenticated, onGoRegister, role, setRole, loginError }: LoginPageProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <main className="login-screen">
@@ -41,11 +42,37 @@ export function LoginPage({ onAuthenticated, onGoRegister, role, setRole, loginE
         <p>请输入账号密码，并选择账号对应的角色。</p>
         <label>
           账号
-          <input value={username} onChange={(event) => setUsername(event.target.value)} />
+          <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="请输入账号" />
         </label>
         <label>
           密码
-          <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
+          <div style={{ position: "relative" }}>
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              type={showPassword ? "text" : "password"}
+              placeholder="请输入对应密码"
+              style={{ width: "100%", paddingRight: 48 }}
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
+              onClick={() => setShowPassword((visible) => !visible)}
+              style={{
+                position: "absolute",
+                right: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: 0,
+                background: "transparent",
+                color: "#64748b",
+                cursor: "pointer",
+                padding: 4,
+              }}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
         </label>
         <label>
           登录角色

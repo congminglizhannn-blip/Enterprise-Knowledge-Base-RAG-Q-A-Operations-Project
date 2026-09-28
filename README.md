@@ -14,7 +14,7 @@
 - [简单上手系统](#简单上手系统)
 - [详细接口](#详细接口)
 - [技术栈](#技术栈)
-- [PRD文档和业务流程图](#PRD文档和业务流程图)
+- [PRD文档](#PRD文档)
 
 ## 项目简介
 
@@ -316,6 +316,84 @@ docker compose up --build
 
 
 ## 业务流程
+
+0.整体业务流程图
+
+<details>
+<summary>点击展开查看整体业务流程图</summary>
+
+```mermaid
+flowchart TD
+  Start([用户进入系统]) --> Auth{登录态是否有效}
+  Auth -- 否 --> Login[登录 / 注册]
+  Login --> RoleCheck{角色校验是否通过}
+  RoleCheck -- 否 --> RoleError["提示角色不一致或认证失败<br>不创建 session"]
+  RoleCheck -- 是 --> MustPwd{是否需要强制改密}
+  MustPwd -- 是 --> ChangePwd[修改密码并重签 session]
+  MustPwd -- 否 --> Shell[进入业务布局]
+  ChangePwd --> Shell
+  Auth -- 是 --> Restore[调用 /api/auth/me]
+  Restore --> RestoreOK{登录态恢复是否完成}
+  RestoreOK -- 否 --> RestoreFail["提示登录态失效<br>清理本地认证信息"]
+  RestoreOK -- 是 --> Shell
+
+  Shell --> KbManage[知识库管理]
+  KbManage --> KbStatus{知识库是否启用}
+  KbStatus -- 否 --> KbDisabled["保留文档 / 向量 / 历史<br>业务访问返回 409"]
+  KbStatus -- 是 --> Ingestion[文档入库]
+
+  Ingestion --> Upload[上传文件或导入链接]
+  Upload --> Pending["创建待解析文档<br>status=pending"]
+  Pending --> SortTop["列表按 created_at desc, id desc<br>新文档置顶"]
+  Pending --> Parse[手动点击解析]
+  Parse --> Extract{文本提取是否成功}
+  Extract -- 否 --> Failed["状态 failed<br>显示失败原因"]
+  Extract -- 是 --> Chunk[分块]
+  Chunk --> Embed[本地 Embedding]
+  Embed --> Vector[写入 document_chunks + pgvector]
+  Vector --> Completed{chunk 写入与计数回写是否完成}
+  Completed -- 否 --> Failed
+  Completed -- 是 --> DocReady["状态 completed<br>可参与检索"]
+
+  Shell --> Chat[问答工作台]
+  Chat --> SelectKb{知识库是否已选择}
+  SelectKb -- 否 --> SelectHint[提示先选择知识库]
+  SelectKb -- 是 --> SessionReady{会话是否已准备}
+  SessionReady -- 否 --> NewSession[新增本人空会话]
+  NewSession --> Ask[输入问题]
+  SessionReady -- 是 --> Ask
+  Chat --> Ask
+  Ask --> AccessCheck{知识库与部门权限是否通过}
+  AccessCheck -- 否 --> AccessDenied[拒绝问答并提示无权限]
+  AccessCheck -- 是 --> Retrieve[SQL 权限过滤 + 向量检索]
+  Retrieve --> HitCheck{是否命中相关 chunk}
+  HitCheck -- 否 --> EmptyCite[显示未命中相关片段]
+  HitCheck -- 是 --> Cite[生成本次命中引用]
+  EmptyCite --> Prompt[构造 Prompt]
+  Cite --> Prompt
+  Prompt --> DeepSeek[DeepSeek 流式生成]
+  DeepSeek --> SSE{SSE 是否正常完成}
+  SSE -- 否 --> StreamError[提示生成失败或网络异常]
+  SSE -- 是 --> Save["保存用户问题 + 助手回答<br>round_count + 1"]
+  Save --> FirstRound{首轮问答是否完成}
+  FirstRound -- 是 --> Rename[默认标题改为首个问题]
+  FirstRound -- 否 --> KeepTitle[保留标题]
+  Rename --> History
+  KeepTitle --> History
+
+  Shell --> History[问答历史与审计]
+  History --> ScopeReady{数据范围计算是否完成}
+  ScopeReady -- 否 --> HistoryError[提示历史加载失败]
+  ScopeReady -- 是 --> Scope["按角色生成后端 DataScope<br>超管全量 / 部门管理员部门树 / 普通用户本人"]
+  Scope --> Filters[关键词 / 组织 / 部门 / 用户 / 知识库 / 时间]
+  Filters --> Page[分页 + 排序 + round_count]
+
+  Shell --> Eval[评估与验收闭环]
+  Eval --> Tests[pytest / node tests / build]
+  Eval --> RagCases[RAG 最小测试样例]
+  Eval --> Checklist[验收清单]
+```
+</details>
 
 ### 1. 登录与权限
 
@@ -646,6 +724,6 @@ docs/api_reference.md
 - 本地前后端开发启动
 - 可选 Docker Compose 整体启动
 
-## PRD文档和业务流程图
+## PRD文档
 详细见飞书文档
 https://zcnqgn3385cd.feishu.cn/wiki/UtS8wsHLeiOhvOkDgCIc4UpOn0d

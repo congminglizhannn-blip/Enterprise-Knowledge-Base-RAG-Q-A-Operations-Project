@@ -1,4 +1,5 @@
 import { FileText, UploadCloud } from "lucide-react";
+import { RowActions } from "./RowActions";
 import type { UploadRow } from "./types";
 
 type DocumentTableProps = {
@@ -32,8 +33,8 @@ export function DocumentTable({
 
   if (variant === "ingestion") {
     return (
-      <div className="table-wrap">
-        <table>
+      <div className="table-wrap document-table-wrap">
+        <table className="document-table document-table--ingestion">
           <thead><tr>{["文件名", "类型", "知识库", "状态", "Chunk", "上传者", "操作"].map((header) => <th key={header}>{header}</th>)}</tr></thead>
           <tbody>
             {documents.map((doc) => (
@@ -44,9 +45,11 @@ export function DocumentTable({
                 <td>{doc.status}</td>
                 <td>{doc.chunks}</td>
                 <td>{doc.owner}</td>
-                <td>
-                  <button className="table-action" disabled={!doc.id || doc.status === "解析中"} onClick={() => onParse?.(doc)}>解析</button>
-                  {canDelete && <button className="table-action danger" disabled={!doc.id} onClick={() => onDelete?.(doc)}>删除</button>}
+                <td className="document-actions-cell">
+                  <RowActions label={`操作：${doc.name}`}>
+                    <button className="table-action" disabled={!doc.id || doc.status === "解析中"} onClick={() => onParse?.(doc)}>解析</button>
+                    {canDelete && <button className="table-action danger" disabled={!doc.id} onClick={() => onDelete?.(doc)}>删除</button>}
+                  </RowActions>
                 </td>
               </tr>
             ))}
@@ -58,7 +61,7 @@ export function DocumentTable({
 
   return (
     <div className="table-wrap scroll-table">
-      <table>
+      <table className="document-table document-table--files">
         <thead><tr>{["文件名", "类型", "状态", "Chunk", "来源", "上传者", "时间", "操作"].map((header) => <th key={header}>{header}</th>)}</tr></thead>
         <tbody>
           {documents.map((doc) => (
@@ -70,9 +73,11 @@ export function DocumentTable({
               <td>{doc.source}</td>
               <td>{doc.owner}</td>
               <td>{doc.time}</td>
-              <td>
-                <button className="table-action" disabled={!doc.id} onClick={() => onView?.(doc)}>查看</button>
-                {canDelete && <button className="table-action danger" disabled={!doc.id} onClick={() => onDelete?.(doc)}>删除</button>}
+              <td className="document-actions-cell">
+                <RowActions label={`操作：${doc.name}`}>
+                  <button className="table-action" disabled={!doc.id} onClick={() => onView?.(doc)}>查看</button>
+                  {canDelete && <button className="table-action danger" disabled={!doc.id} onClick={() => onDelete?.(doc)}>删除</button>}
+                </RowActions>
               </td>
             </tr>
           ))}

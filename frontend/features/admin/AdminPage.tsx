@@ -30,6 +30,7 @@ import type { OrganizationInfo } from "@/features/documents/types";
 import { InvitePage } from "./InvitePage";
 import { KnowledgeBaseConfigPanel } from "./KnowledgeBaseConfigPanel";
 import { OrganizationPanel } from "./OrganizationPanel";
+import { RowActions } from "../documents/RowActions";
 
 export type AdminPageProps = {
   role: Role;
@@ -295,8 +296,8 @@ export function AdminPage({
                 <div className="search-box"><Search size={16} /><input value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} placeholder="输入筛选关键词" /></div>
                 {(departmentFilter || roleFilter || searchKeyword || userSearchField !== "all") && <button className="secondary-btn" onClick={resetUserFilters}>清除筛选</button>}
               </div>
-              <div className="table-wrap">
-                <table>
+              <div className="table-wrap admin-data-table-wrap">
+                <table className="admin-data-table admin-users-table">
                   <thead><tr><th>用户名</th><th>角色</th><th>部门</th><th>状态</th><th>操作</th></tr></thead>
                   <tbody>
                     {filteredUsers.length === 0 ? (
@@ -307,9 +308,11 @@ export function AdminPage({
                         <td><button className="link-cell" onClick={() => setRoleFilter(roleFilter === user.role ? "" : user.role)}>{mapBackendRole(user.role)}</button></td>
                         <td><button className="link-cell" onClick={() => setDepartmentFilter(departmentFilter === user.department_id ? "" : user.department_id)}>{user.department_name || "-"}</button></td>
                         <td>{user.is_active ? (user.must_change_password ? "需改密" : "启用") : "停用"}</td>
-                        <td>
+                        <td className="admin-actions-cell">
+                          <RowActions label={`操作：${user.username}`}>
                           <button className="table-action" disabled={!isSuperAdmin} onClick={() => openEditUser(user)}>编辑角色</button>
                           <button className="table-action" disabled={!isSuperAdmin} onClick={() => toggleUserStatus(user)}>{user.is_active ? "禁用" : "启用"}</button>
+                          </RowActions>
                         </td>
                       </tr>
                     ))}
@@ -333,8 +336,8 @@ export function AdminPage({
                 {(departmentSearchKeyword || departmentSearchField !== "all" || departmentOrgFilter || departmentStatusFilter) && <button className="secondary-btn" onClick={resetDepartmentFilters}>清除筛选</button>}
                 <button className="primary-btn small" disabled={!isSuperAdmin} onClick={openCreateDepartment}>新建部门</button>
               </div>
-              <div className="table-wrap">
-                <table>
+              <div className="table-wrap admin-data-table-wrap">
+                <table className="admin-data-table admin-departments-table">
                   <thead><tr><th>部门名称</th><th>组织</th><th>说明</th><th>状态</th><th>操作</th></tr></thead>
                   <tbody>
                     {filteredDepartments.length === 0 ? (
@@ -348,13 +351,15 @@ export function AdminPage({
                         <td><button className="link-cell" aria-pressed={departmentOrgFilter === department.org_id} onClick={() => setDepartmentOrgFilter(departmentOrgFilter === department.org_id ? "" : department.org_id)}>{organizationNameById.get(department.org_id) || department.org_id}</button></td>
                         <td>{department.description || "-"}</td>
                         <td><button className="link-cell" aria-pressed={departmentStatusFilter === (department.is_archived ? "archived" : "active")} onClick={() => { const value = department.is_archived ? "archived" : "active"; setDepartmentStatusFilter(departmentStatusFilter === value ? "" : value); }}>{department.is_archived ? "已归档" : "启用"}</button></td>
-                        <td>
-                          <button className="table-action" disabled={!isSuperAdmin || department.is_archived} onClick={() => openEditDepartment(department)}>编辑</button>
-                          {department.is_archived ? (
-                            <button className="table-action" disabled={!isSuperAdmin} onClick={() => restoreDepartmentRow(department)}>恢复</button>
-                          ) : (
-                            <button className="table-action danger" disabled={!isSuperAdmin} onClick={() => archiveDepartmentRow(department)}>归档</button>
-                          )}
+                        <td className="department-actions-cell">
+                          <RowActions label={`操作：${department.name}`}>
+                            <button className="table-action" disabled={!isSuperAdmin || department.is_archived} onClick={() => openEditDepartment(department)}>编辑</button>
+                            {department.is_archived ? (
+                              <button className="table-action" disabled={!isSuperAdmin} onClick={() => restoreDepartmentRow(department)}>恢复</button>
+                            ) : (
+                              <button className="table-action danger" disabled={!isSuperAdmin} onClick={() => archiveDepartmentRow(department)}>归档</button>
+                            )}
+                          </RowActions>
                         </td>
                       </tr>
                     ))}

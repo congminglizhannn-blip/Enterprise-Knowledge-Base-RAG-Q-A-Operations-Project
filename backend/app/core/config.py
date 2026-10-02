@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     deepseek_api_key: str = "sk-xxxxx"
     deepseek_base_url: str = "https://api.deepseek.com/v1"
     deepseek_model: str = "deepseek-chat"
+    pdf_image_table_vision_enabled: bool = False
+    pdf_image_table_vision_model: str = "deepseek-flash"
     deepseek_reasoning_effort: str | None = None
     deepseek_thinking_enabled: bool = False
     secret_key: str = "change-me-in-production"

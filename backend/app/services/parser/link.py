@@ -115,15 +115,17 @@ def stringify_table_value(value: object) -> str:
 def rows_to_text(title: str | None, sections: list[tuple[str, list[list[object]]]]) -> str:
     parts: list[str] = []
     if title:
-        parts.append(title)
+        parts.append(f"# {title}")
     for section_name, rows in sections:
         if section_name:
-            parts.append(f"【{section_name}】")
-        for index, row in enumerate(rows, start=1):
-            values = [stringify_table_value(cell).strip() for cell in row]
-            line = " | ".join(value for value in values if value)
-            if line:
-                parts.append(f"{index}. {line}")
+            parts.append(f"## {section_name}")
+        matrix = [[stringify_table_value(cell).strip().replace("|", "\\|").replace("\n", "<br>") for cell in row] for row in rows]
+        width = max((len(row) for row in matrix), default=0)
+        matrix = [row + [""] * (width - len(row)) for row in matrix]
+        if width and matrix:
+            parts.append("| " + " | ".join(matrix[0]) + " |")
+            parts.append("| " + " | ".join(["---"] * width) + " |")
+            parts.extend("| " + " | ".join(row) + " |" for row in matrix[1:])
     return "\n".join(parts)
 
 
@@ -174,12 +176,33 @@ def extract_text_from_block_value(value: object) -> list[str]:
 
 
 def extract_text_from_docx_block(block: dict) -> str:
-    lines: list[str] = []
-    for key, value in block.items():
-        if key in {"block_id", "parent_id", "children", "block_type"} or key.endswith("_id"):
-            continue
-        lines.extend(extract_text_from_block_value(value))
-    return " | ".join(line for line in lines if line)
+    content_keys = (
+        "page", "paragraph", "heading1", "heading2", "heading3", "heading4", "heading5", "heading6",
+        "bullet", "ordered", "code", "quote", "text", "table_cell",
+    )
+
+    def body_text(value: object) -> list[str]:
+        if isinstance(value, str):
+            return [value.strip()] if value.strip() else []
+        if isinstance(value, list):
+            return [text for item in value for text in body_text(item)]
+        if not isinstance(value, dict):
+            return []
+        if isinstance(value.get("text_run"), dict):
+            content = value["text_run"].get("content")
+            return [content.strip()] if isinstance(content, str) and content.strip() else []
+        # Only inspect text-bearing fields. Block style, alignment, IDs, flags,
+        # and sizing metadata are structural data, never document prose.
+        result: list[str] = []
+        for key in ("elements", "content", "text", "title", "name", "url", "link"):
+            if key in value:
+                result.extend(body_text(value[key]))
+        return result
+
+    for key in content_keys:
+        if key in block:
+            return " | ".join(body_text(block[key]))
+    return ""
 
 
 def parse_feishu_docx_blocks(client: httpx.Client, tenant_token: str, document_token: str) -> str:
@@ -189,12 +212,159 @@ def parse_feishu_docx_blocks(client: httpx.Client, tenant_token: str, document_t
         tenant_token,
         params={"page_size": 500},
     )
-    collected: list[str] = []
+    # The list endpoint can omit descendants referenced by a block's children
+    # or table.cells. Load only missing descendants before rendering.
+    by_id = {block.get("block_id"): block for block in blocks if block.get("block_id")}
+    queue = list(blocks)
+    visited: set[str] = set()
+    while queue:
+        parent = queue.pop(0)
+        parent_id = parent.get("block_id")
+        if not parent_id or parent_id in visited:
+            continue
+        visited.add(parent_id)
+        child_ids = list(parent.get("children") or [])
+        table_cells = (parent.get("table") or {}).get("cells") or []
+        if table_cells and isinstance(table_cells[0], list):
+            table_cells = [cell_id for row in table_cells for cell_id in row]
+        child_ids.extend(table_cells)
+        missing = [child_id for child_id in child_ids if child_id not in by_id]
+        if not missing:
+            continue
+        descendants = request_feishu_api_paginated(
+            client,
+            f"/docx/v1/documents/{document_token}/blocks/{parent_id}/children",
+            tenant_token,
+            params={"page_size": 500},
+        )
+        for child in descendants:
+            child_id = child.get("block_id")
+            if child_id and child_id not in by_id:
+                by_id[child_id] = child
+                blocks.append(child)
+                queue.append(child)
+    return render_feishu_docx_blocks(blocks, client, tenant_token)
+
+
+def render_feishu_docx_blocks(
+    blocks: list[dict], client: httpx.Client | None = None, tenant_token: str | None = None
+) -> str:
+    by_id = {block.get("block_id"): block for block in blocks if block.get("block_id")}
+    children: dict[str, list[dict]] = {}
     for block in blocks:
+        parent_id = block.get("parent_id")
+        if parent_id:
+            children.setdefault(parent_id, []).append(block)
+
+    def cell_text(block: dict) -> str:
         text = extract_text_from_docx_block(block)
-        if text:
-            collected.append(text)
-    return "\n".join(collected)
+        nested = children.get(block.get("block_id"), [])
+        if nested:
+            text = " ".join(filter(None, (cell_text(child) for child in nested)))
+        return text.strip()
+
+    def markdown_table(block: dict) -> str:
+        table = block.get("table") or {}
+        props = table.get("property") or table.get("table_property") or {}
+        try:
+            columns = int(props.get("column_size") or props.get("column_count") or 0)
+            rows = int(props.get("row_size") or props.get("row_count") or 0)
+        except (TypeError, ValueError):
+            columns = rows = 0
+        cell_ids = table.get("cells") or []
+        if cell_ids and isinstance(cell_ids[0], list):
+            cell_ids = [cell_id for row in cell_ids for cell_id in row]
+        cell_blocks = [by_id.get(cell_id) for cell_id in cell_ids]
+        cell_blocks = [item for item in cell_blocks if item]
+        if not cell_blocks:
+            cell_blocks = children.get(block.get("block_id"), [])
+        if not columns:
+            columns = max(1, round(len(cell_blocks) / rows)) if rows else max(1, len(cell_blocks))
+        if not rows:
+            rows = (len(cell_blocks) + columns - 1) // columns
+        values = [cell_text(item).replace("|", "\\|").replace("\n", "<br>") for item in cell_blocks]
+        matrix = [values[i * columns:(i + 1) * columns] for i in range(rows)]
+        matrix = [row + [""] * (columns - len(row)) for row in matrix]
+        if not matrix:
+            return ""
+        lines = ["| " + " | ".join(matrix[0]) + " |", "| " + " | ".join(["---"] * columns) + " |"]
+        lines.extend("| " + " | ".join(row) + " |" for row in matrix[1:])
+        return "\n".join(lines)
+
+    collected: list[str] = []
+    rendered_cells: set[str] = set()
+    for block in blocks:
+        kind = next((key for key in ("table", "table_cell", "sheet", "image", "paragraph", "heading1", "heading2", "heading3", "heading4", "heading5", "heading6", "bullet", "ordered", "code", "quote", "text") if key in block), None)
+        if kind == "table":
+            rendered = markdown_table(block)
+            rendered_cells.update(item.get("block_id") for item in children.get(block.get("block_id"), []))
+        elif kind == "sheet":
+            if client is None or tenant_token is None:
+                rendered = ""
+            else:
+                rendered = parse_feishu_embedded_sheet(client, tenant_token, (block.get("sheet") or {}).get("token", ""))
+        elif kind == "bitable":
+            if client is None or tenant_token is None:
+                rendered = ""
+            else:
+                rendered = parse_feishu_embedded_bitable(client, tenant_token, (block.get("bitable") or {}).get("token", ""))
+        elif kind == "image":
+            image = block.get("image") or {}
+            image_key = image.get("token") or image.get("image_key") or ""
+            rendered = f"![图片](feishu://{image_key})" if image_key else "![图片]"
+        elif kind == "table_cell" or block.get("block_id") in rendered_cells:
+            continue
+        else:
+            rendered = extract_text_from_docx_block(block)
+            if rendered and kind and kind.startswith("heading"):
+                level = min(6, int(kind[-1]))
+                rendered = f"{'#' * level} {rendered}"
+        if rendered.strip():
+            collected.append(rendered.strip())
+    return "\n\n".join(collected)
+
+
+def parse_feishu_embedded_sheet(client: httpx.Client, tenant_token: str, sheet_token: str) -> str:
+    """Read an embedded Sheet block; its token is spreadsheet_token_sheet_id."""
+    if "_" not in sheet_token:
+        raise ValueError("飞书嵌入式电子表格 token 格式无效")
+    spreadsheet_token, sheet_id = sheet_token.rsplit("_", 1)
+    data = request_feishu_api(
+        client,
+        f"/sheets/v2/spreadsheets/{spreadsheet_token}/values/{sheet_id}",
+        tenant_token,
+        params={"valueRenderOption": "ToString"},
+    )
+    value_range = data.get("valueRange") or data.get("value_range") or data
+    values = value_range.get("values") or []
+    return rows_to_text(None, [("", values)])
+
+
+def parse_feishu_embedded_bitable(client: httpx.Client, tenant_token: str, bitable_token: str) -> str:
+    """Read an embedded Bitable block; its token is app_token_table_id."""
+    if "_" not in bitable_token:
+        raise ValueError("飞书嵌入式多维表格 token 格式无效")
+    app_token, table_id = bitable_token.rsplit("_", 1)
+    fields = request_feishu_api_paginated(
+        client,
+        f"/bitable/v1/apps/{app_token}/tables/{table_id}/fields",
+        tenant_token,
+        params={"page_size": 100},
+    )
+    field_names = [field.get("field_name") or field.get("name") for field in fields]
+    field_names = [name for name in field_names if name]
+    records = request_feishu_api_paginated(
+        client,
+        f"/bitable/v1/apps/{app_token}/tables/{table_id}/records",
+        tenant_token,
+        params={"page_size": 100},
+    )
+    rows = [field_names]
+    rows.extend(
+        [stringify_table_value((record.get("fields") or {}).get(name)) for name in field_names]
+        for record in records
+    )
+    return rows_to_text(None, [("多维表格", rows)])
 
 
 def parse_feishu_sheet(client: httpx.Client, tenant_token: str, spreadsheet_token: str) -> ParsedLinkText:
@@ -238,10 +408,9 @@ def parse_feishu_bitable(client: httpx.Client, tenant_token: str, app_token: str
             tenant_token,
             params={"page_size": 100},
         )
-        rows = []
-        for record in records:
-            fields = record.get("fields") or {}
-            rows.append([f"{field_name}: {stringify_table_value(field_value)}" for field_name, field_value in fields.items()])
+        field_names = list(dict.fromkeys(field_name for record in records for field_name in (record.get("fields") or {})))
+        rows = [field_names]
+        rows.extend([[stringify_table_value((record.get("fields") or {}).get(field_name)) for field_name in field_names] for record in records])
         sections.append((table_name, rows))
     return ParsedLinkText(text=rows_to_text(None, sections), title=None)
 
@@ -271,7 +440,7 @@ def parse_feishu_link(url: str) -> ParsedLinkText:
             data = request_feishu_api(client, f"/docx/v1/documents/{token}/raw_content", tenant_token)
             raw_content = data.get("content") or data.get("text") or ""
             block_content = parse_feishu_docx_blocks(client, tenant_token, token)
-            content = merge_text_parts(raw_content, block_content)
+            content = block_content or raw_content
         elif resource_type == "doc":
             data = request_feishu_api(client, f"/doc/v2/{token}/raw_content", tenant_token)
             content = data.get("content") or data.get("text") or ""

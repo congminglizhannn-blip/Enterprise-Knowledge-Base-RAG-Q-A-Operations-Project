@@ -30,6 +30,7 @@ def ingest_document(db: Session, document: Document, embedding_service: Embeddin
         document.status = DocumentStatus.PROCESSING
         db.commit()
         text, extracted_title = parse_document_text(document)
+        document.source_markdown = text
         if extracted_title:
             document.file_name = extracted_title[:255]
         chunks = chunk_text(text)

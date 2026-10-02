@@ -16,6 +16,7 @@ class Document(UUIDMixin, TimestampMixin, Base):
     file_name: Mapped[str] = mapped_column(String(255))
     file_type: Mapped[DocumentType] = mapped_column(value_enum(DocumentType, "document_type"))
     file_path: Mapped[str] = mapped_column(Text)
+    source_markdown: Mapped[str | None] = mapped_column(Text)
     status: Mapped[DocumentStatus] = mapped_column(value_enum(DocumentStatus, "document_status"), default=DocumentStatus.PENDING)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     uploaded_by: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)

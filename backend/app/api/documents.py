@@ -52,6 +52,17 @@ def get_document(document_id: str, current_user: User = Depends(get_current_user
     return DocumentDetail.model_validate({**document.__dict__, "chunks": chunks})
 
 
+@router.get("/{document_id}/source", response_model=dict)
+def get_document_source(document_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    document = db.scalar(select(Document).where(Document.id == document_id))
+    if not document:
+        raise HTTPException(status_code=404, detail="文档不存在或无权限")
+    get_accessible_kb(db, document.knowledge_base_id, current_user)
+    if document.source_markdown is None:
+        raise HTTPException(status_code=404, detail="该文档尚无已解析的原文，请重新解析")
+    return {"document_id": document.id, "format": "markdown", "content": document.source_markdown}
+
+
 @router.post("/{document_id}/parse", response_model=DocumentRead)
 def parse_document(document_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     stmt = select(Document).where(Document.id == document_id)

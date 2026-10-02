@@ -105,6 +105,10 @@ export function getDocument(documentId: string) {
   return apiJson<DocumentDetail>(`/api/documents/${documentId}`);
 }
 
+export function getDocumentSource(documentId: string) {
+  return apiJson<{ document_id: string; format: "markdown"; content: string }>(`/api/documents/${documentId}/source`);
+}
+
 export function uploadFile(knowledgeBaseId: string, file: File) {
   const formData = new FormData();
   formData.append("file", file);

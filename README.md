@@ -169,6 +169,8 @@ POSTGRES_PASSWORD=password
 DEEPSEEK_API_KEY=sk-xxxxx
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-chat
+PDF_IMAGE_TABLE_VISION_ENABLED=false
+PDF_IMAGE_TABLE_VISION_MODEL=deepseek-flash
 DEEPSEEK_REASONING_EFFORT=
 DEEPSEEK_THINKING_ENABLED=false
 SECRET_KEY=change-me-in-production
@@ -187,6 +189,7 @@ FEISHU_APP_SECRET=xxxxx
 
 注意：
 
+- PDF 图片型表格视觉解析默认关闭。确认允许将 PDF 中较大的嵌入图片发送到 DeepSeek 视觉模型后，才在 `backend/.env` 设置 `PDF_IMAGE_TABLE_VISION_ENABLED=true`；模型由 `PDF_IMAGE_TABLE_VISION_MODEL` 指定，默认 `deepseek-flash`。启用后需重启后端并重新解析已有 PDF。调用会产生模型用量；敏感文档请勿启用。
 - 真实 API Key、App Secret、Token、数据库密码不要提交到 Git。
 - `.env` 只保存在本地，仓库中只能保留占位符。
 - 修改 `.env` 后必须重启后端进程。

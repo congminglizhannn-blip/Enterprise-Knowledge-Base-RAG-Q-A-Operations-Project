@@ -30,8 +30,10 @@ export function LoginPage({ onAuthenticated, onGoRegister, role, setRole, loginE
             ["流式问答", MessageSquareText],
           ].map(([label, Icon]) => (
             <div className="flow-step" key={label as string}>
-              <Icon size={22} />
-              <span>{label as string}</span>
+              <div className="flow-step-content">
+                <Icon size={22} />
+                <span>{label as string}</span>
+              </div>
             </div>
           ))}
         </div>

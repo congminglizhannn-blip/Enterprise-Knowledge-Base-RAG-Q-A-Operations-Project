@@ -219,6 +219,8 @@ FEISHU_APP_SECRET=xxxxx
 
 搭建过程测试建立了一些用户、进行了对应操作产生了一些数据，如果有需求使用历史数据，数据已经在根目录中放置： `rag_db.sql`，可将它导入 Docker 数据库。
 
+导入前请先核对备份文件的格式、编码、源/目标 PostgreSQL 版本和 Alembic 版本，并确认目标数据库已备份。当前仓库中的 `rag_db.sql` 是 UTF-8 纯文本 SQL dump，由 `pg_dump 18.6` 从 PostgreSQL 16.15 导出；虚拟机 PostgreSQL 16 不建议直接用其 `psql` 原样导入，应优先使用 PostgreSQL 16 的 `pg_dump` 客户端重新导出，或按下方迁移 SOP 的兼容步骤操作。SQL 不包含 `backend/uploads/` 中的原始文档文件，需单独迁移该目录。
+
 ###### (1)文件位置：
 
 ```text
@@ -239,10 +241,10 @@ FEISHU_APP_SECRET=xxxxx
 ```powershell
 cd "Enterprise-Knowledge-Base-RAG-Q-A-Operations-Project"
 docker cp .\rag_db.sql ekbrqao-postgres:/tmp/rag_db.sql
-docker exec -i ekbrqao-postgres psql -U postgres -d rag_db -f /tmp/rag_db.sql
+docker exec -i ekbrqao-postgres psql -U postgres -d rag_db -v ON_ERROR_STOP=1 --single-transaction -f /tmp/rag_db.sql
 ```
 
-如果 `rag_db.sql` 是完整库备份且包含建表语句，建议先确认是否需要清空旧库，避免演示数据重复。清库属于破坏性操作，请只在确认不需要保留本地数据时执行。
+以上直接导入命令仅适用于与目标 PostgreSQL 版本兼容、且目标为空的纯文本 SQL dump。请勿未经核验直接覆盖已有数据库；建议先恢复到临时库、核对数据后再切换。完整迁移步骤见 [数据库与上传文件迁移 SOP](docs/database-migration-sop.md)，当前 `rag_db.sql` 的具体属性和校验信息见 [数据库迁移文件属性说明](rag_db.backup-info.md)。
 
 ##### 2.3.5 启动后端
 
